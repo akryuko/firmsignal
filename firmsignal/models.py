@@ -72,14 +72,50 @@ class AccountantOutput(BaseModel):
 
 
 class RiskFlag(BaseModel):
-    category: str
-    description: str
-    severity: str  # "low" | "medium" | "high"
-    source_url: str
+    category: str = Field(
+        description=(
+            "One of: Culture, Legal, Financial, Regulatory, "
+            "Competition, Leadership, Operations"
+        )
+    )
+    description: str = Field(
+        description="1-2 sentence description of the specific risk"
+    )
+    severity: str = Field(
+        description="One of: low, medium, high"
+    )
+    source_url: str = Field(
+        description="URL of the source that surfaced this risk — must appear verbatim in the provided sources"
+    )
 
 
 class SkepticOutput(BaseModel):
     company_name: str
-    sentiment_score: float = 0.0  # -1.0 to 1.0
-    risk_flags: list[RiskFlag] = Field(default_factory=list)
-    summary: str = ""
+
+    sentiment_score: float = Field(
+        description="Overall sentiment from -1.0 (extremely negative) to 1.0 (extremely positive), based strictly on the evidence"
+    )
+    sentiment_label: str = Field(
+        description="One of: very_negative, negative, neutral, positive, very_positive"
+    )
+
+    risk_flags: list[RiskFlag] = Field(
+        default_factory=list,
+        description="Up to 5 most significant risk flags. Prioritise patterns over single incidents."
+    )
+    positive_signals: list[str] = Field(
+        default_factory=list,
+        description="Up to 3 genuinely notable positives. Exclude obvious PR talking points."
+    )
+
+    employee_sentiment: str = Field(
+        description="2-sentence summary of what employees say about working here"
+    )
+    public_sentiment: str = Field(
+        description="2-sentence summary of investor and public perception"
+    )
+    summary: str = Field(
+        description="3-4 sentence overall risk assessment written for the Synthesizer. Be direct."
+    )
+
+    sources_analyzed: int = Field(default=0)
