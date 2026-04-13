@@ -5,6 +5,8 @@ import sys
 from firmsignal.graph import app
 from firmsignal.state import FirmState
 
+SEVERITY_ICON = {"high": "(!)", "medium": "(*)", "low": "(-)"}
+
 
 def run(company: str):
     initial_state: FirmState = {
@@ -26,7 +28,7 @@ def run(company: str):
         print(f"\nError: {result['error']}")
         return
 
-    # ── Scout output ───────────────────────────────────────────────────────────
+    # ── Scout ──────────────────────────────────────────────────────────────────
     scout = result.get("scout_output")
     if scout:
         print(f"\n{'═' * 55}")
@@ -40,30 +42,49 @@ def run(company: str):
             for c in scout["leadership_changes"]:
                 print(f"    – {c['name']} ({c['role']}): {c['change_type']}")
 
-    # ── Accountant output ──────────────────────────────────────────────────────
+    # ── Accountant ─────────────────────────────────────────────────────────────
     acc = result.get("accountant_output")
     if acc:
         print(f"\n{'═' * 55}")
-        print(f"  Accountant — {acc['company_name']}  ({acc.get('ticker', 'Private')})")
+        print(f"  Accountant — {acc.get('ticker', 'Private')}")
+        print(f"{'═' * 55}")
+        if acc["is_public"]:
+            print(f"\n  Price:        ${acc['current_price']}  ({acc['currency']})")
+            print(f"  Market Cap:   {acc['market_cap_formatted']}")
+            print(f"  Revenue:      {acc['revenue_formatted']}")
+            print(f"  P/E:          {acc['pe_ratio']}")
+            print(f"  Gross Margin: {acc['gross_margin_pct']}%")
+            print(f"  1Y / 5Y:      {acc['price_change_1y']}% / {acc['price_change_5y']}%")
+            print(f"  History:      {len(acc['price_history'])} months")
+        print(f"\n  {acc['financial_summary']}")
+
+    # ── Skeptic ────────────────────────────────────────────────────────────────
+    skep = result.get("skeptic_output")
+    if skep:
+        print(f"\n{'═' * 55}")
+        print(f"  Skeptic — sentiment: {skep['sentiment_score']:+.2f}  ({skep['sentiment_label']})")
         print(f"{'═' * 55}")
 
-        if not acc["is_public"]:
-            print(f"\n  {acc['financial_summary']}")
-        else:
-            print(f"\n  Price:       ${acc['current_price']}  ({acc['currency']})")
-            print(f"  Market Cap:  {acc['market_cap_formatted']}")
-            print(f"  P/E Ratio:   {acc['pe_ratio']}")
-            print(f"  Revenue:     {acc['revenue_formatted']}")
-            print(f"  Gross Margin:{acc['gross_margin_pct']}%")
-            print(f"  Debt/Equity: {acc['debt_to_equity']}")
-            print(f"  Employees:   {acc['employee_count']:,}" if acc["employee_count"] else "  Employees:   N/A")
-            print(f"\n  1Y change:   {acc['price_change_1y']}%")
-            print(f"  5Y change:   {acc['price_change_5y']}%")
-            print(f"\n  Price history points: {len(acc['price_history'])}")
-            print(f"  Range: {acc['price_history'][0]['date']} → {acc['price_history'][-1]['date']}")
-            print(f"\n  Summary: {acc['financial_summary']}")
+        if skep["risk_flags"]:
+            print(f"\n  Risk Flags:")
+            for flag in skep["risk_flags"]:
+                icon = SEVERITY_ICON.get(flag["severity"], "(-)")
+                print(f"\n    {icon} [{flag['severity'].upper()}] {flag['category']}")
+                print(f"       {flag['description']}")
+                print(f"       {flag['source_url']}")
 
-    print(f"\n  Total sources collected: {len(result['sources'])}")
+        if skep["positive_signals"]:
+            print(f"\n  Positive Signals:")
+            for sig in skep["positive_signals"]:
+                print(f"    + {sig}")
+
+        print(f"\n  Employee sentiment:  {skep['employee_sentiment']}")
+        print(f"  Public sentiment:    {skep['public_sentiment']}")
+        print(f"\n  Summary: {skep['summary']}")
+        print(f"\n  Sources analysed: {skep['sources_analyzed']}")
+
+    print(f"\n{'─' * 55}")
+    print(f"  Total citations collected: {len(result['sources'])}")
 
 
 if __name__ == "__main__":
