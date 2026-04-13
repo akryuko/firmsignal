@@ -1,22 +1,14 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-from langgraph.graph import StateGraph, END
+import sys
+from firmsignal.graph import app
 from firmsignal.state import FirmState
 
-def dummy_node(state: FirmState) -> dict:
-    print(f"Processing: {state['company_name']}")
-    return {"error": None}
 
-graph = StateGraph(FirmState)
-graph.add_node("dummy", dummy_node)
-graph.set_entry_point("dummy")
-graph.add_edge("dummy", END)
-app = graph.compile()
-
-if __name__ == "__main__":
-    result = app.invoke({
-        "company_name": "Apple",
+def run(company: str):
+    initial_state: FirmState = {
+        "company_name": company,
         "scout_output": None,
         "accountant_output": None,
         "skeptic_output": None,
@@ -26,5 +18,42 @@ if __name__ == "__main__":
         "sources": [],
         "messages": [],
         "error": None,
-    })
-    print("Graph ran successfully:", result["company_name"])
+    }
+
+    result = app.invoke(initial_state)
+
+    if result.get("error"):
+        print(f"\nError: {result['error']}")
+        return
+
+    scout = result.get("scout_output")
+    if not scout:
+        print("No scout output produced.")
+        return
+
+    print(f"\n{'═' * 55}")
+    print(f"  Scout Report — {scout['company_name']}  ({scout['research_date']})")
+    print(f"{'═' * 55}")
+
+    print(f"\nNews ({len(scout['news_items'])} items)")
+    for item in scout["news_items"]:
+        print(f"  • {item['headline']}")
+        print(f"    {item['date']}  |  {item['url']}")
+        print(f"    {item['summary']}\n")
+
+    if scout["leadership_changes"]:
+        print(f"Leadership Changes")
+        for c in scout["leadership_changes"]:
+            print(f"  • {c['name']} ({c['role']}) — {c['change_type']} — {c['date']}")
+
+    if scout["key_events"]:
+        print(f"\nKey Events")
+        for e in scout["key_events"]:
+            print(f"  • {e}")
+
+    print(f"\nSources collected: {len(result['sources'])}")
+
+
+if __name__ == "__main__":
+    company = sys.argv[1] if len(sys.argv) > 1 else "Stripe"
+    run(company)
