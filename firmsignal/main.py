@@ -5,129 +5,131 @@ import sys
 import uuid
 
 from langgraph.types import Command
+from rich.console import Console
+from rich.markdown import Markdown
+from rich.rule import Rule
 
 from firmsignal.graph import app
 from firmsignal.state import FirmState
 
-SEVERITY_ICON  = {"high": "(!)", "medium": "(*)", "low": "(-)"}
-SENTIMENT_BAR  = {
-    "very_negative": "[----      ]",
-    "negative":      "[--        ]",
-    "neutral":       "[-----     ]",
-    "positive":      "[-------   ]",
-    "very_positive": "[----------]",
+console = Console()
+
+SEVERITY_ICON = {"high": "(!)", "medium": "(*)", "low": "(-)"}
+SENTIMENT_BAR = {
+    "very_negative": "■■■■■□□□□□",
+    "negative":      "■■■□□□□□□□",
+    "neutral":       "□□□□■□□□□□",
+    "positive":      "□□□□□□■■□□",
+    "very_positive": "□□□□□□□■■■",
 }
 
 
-# ─── Display helpers ───────────────────────────────────────────────────────────
-
 def _print_scout(scout: dict) -> None:
-    print(f"\n{'=' * 56}")
-    print(f"  SCOUT  —  {scout['company_name']}  ({scout['research_date']})")
-    print(f"{'=' * 56}")
+    console.print(Rule("Scout"))
     for item in scout.get("news_items", []):
-        print(f"\n  • {item['headline']}")
-        print(f"    {item['date']}  |  {item['url']}")
+        console.print(f"  • [bold]{item['headline']}[/bold]")
+        console.print(f"    {item['date']}  {item['url']}", style="dim")
     changes = scout.get("leadership_changes", [])
     if changes:
-        print(f"\n  Leadership changes:")
+        console.print("\n  [bold]Leadership changes:[/bold]")
         for c in changes:
-            print(f"    - {c['name']} ({c['role']}): {c['change_type']}")
+            console.print(f"    – {c['name']} ({c['role']}): {c['change_type']}")
 
 
 def _print_accountant(acc: dict) -> None:
-    print(f"\n{'=' * 56}")
-    ticker = acc.get("ticker", "private")
-    print(f"  ACCOUNTANT  —  {acc['company_name']}  ({ticker})")
-    print(f"{'=' * 56}")
+    console.print(Rule("Accountant"))
     if acc.get("is_public"):
-        print(f"\n  Price:        ${acc.get('current_price')}  ({acc.get('currency')})")
-        print(f"  Market Cap:   {acc.get('market_cap_formatted')}")
-        print(f"  Revenue TTM:  {acc.get('revenue_formatted')}")
-        print(f"  P/E:          {acc.get('pe_ratio')}")
-        print(f"  Gross Margin: {acc.get('gross_margin_pct')}%")
-        print(f"  1Y / 5Y:      {acc.get('price_change_1y')}% / {acc.get('price_change_5y')}%")
-        print(f"  History:      {len(acc.get('price_history', []))} months")
-    print(f"\n  {acc.get('financial_summary', '')}")
+        console.print(
+            f"  [bold]{acc.get('ticker')}[/bold]  "
+            f"${acc.get('current_price')} {acc.get('currency')}  |  "
+            f"Cap: {acc.get('market_cap_formatted')}  |  "
+            f"P/E: {acc.get('pe_ratio')}  |  "
+            f"Rev: {acc.get('revenue_formatted')}"
+        )
+        console.print(
+            f"  1Y: [green]{acc.get('price_change_1y')}%[/green]  "
+            f"5Y: [green]{acc.get('price_change_5y')}%[/green]  "
+            f"History: {len(acc.get('price_history', []))} months",
+        )
+    console.print(f"\n  {acc.get('financial_summary', '')}", style="dim")
 
 
 def _print_skeptic(skep: dict) -> None:
+    console.print(Rule("Skeptic"))
     score = skep.get("sentiment_score", 0)
     label = skep.get("sentiment_label", "neutral")
-    print(f"\n{'=' * 56}")
-    print(f"  SKEPTIC  —  sentiment: {score:+.2f}  ({label})")
-    print(f"  {SENTIMENT_BAR.get(label, '')}")
-    print(f"{'=' * 56}")
+    bar   = SENTIMENT_BAR.get(label, "")
+    color = "red" if score < -0.3 else "yellow" if score < 0.3 else "green"
+    console.print(f"  Sentiment: [{color}]{score:+.2f}  {label}  {bar}[/{color}]")
     for flag in skep.get("risk_flags", []):
         icon = SEVERITY_ICON.get(flag["severity"], "(-)")
-        print(f"\n  {icon} [{flag['severity'].upper()}] {flag['category']}")
-        print(f"     {flag['description']}")
-        print(f"     {flag['source_url']}")
+        sev_color = "red" if flag["severity"] == "high" else "yellow"
+        console.print(
+            f"\n  {icon} [{sev_color}][{flag['severity'].upper()}][/{sev_color}] "
+            f"[bold]{flag['category']}[/bold]"
+        )
+        console.print(f"     {flag['description']}", style="dim")
     for sig in skep.get("positive_signals", []):
-        print(f"\n  (+) {sig}")
-    print(f"\n  Summary: {skep.get('summary', '')}")
+        console.print(f"\n  [green](+)[/green] {sig}")
 
 
 def _print_hitl_prompt(payload: dict) -> None:
-    """Renders the HITL review screen in the terminal."""
-    score = payload.get("sentiment_score", 0)
-    label = payload.get("sentiment_label", "neutral")
-    flags = payload.get("risk_flags", [])
+    score  = payload.get("sentiment_score", 0)
+    label  = payload.get("sentiment_label", "neutral")
+    flags  = payload.get("risk_flags", [])
+    color  = "red" if score < -0.3 else "yellow" if score < 0.3 else "green"
 
-    print(f"\n{'#' * 56}")
-    print(f"  HUMAN REVIEW REQUIRED")
-    print(f"  Company:   {payload.get('company')}")
-    print(f"  Sentiment: {score:+.2f}  ({label})")
-    print(f"  Sources:   {payload.get('sources_analyzed', 0)} analysed")
-    print(f"{'#' * 56}")
-
-    print(f"\n  Risk Flags ({len(flags)}):\n")
+    console.print(Rule("[bold yellow]HUMAN REVIEW REQUIRED[/bold yellow]"))
+    console.print(
+        f"  Company: [bold]{payload.get('company')}[/bold]  |  "
+        f"Sentiment: [{color}]{score:+.2f} ({label})[/{color}]  |  "
+        f"Sources: {payload.get('sources_analyzed', 0)}"
+    )
+    console.print(f"\n  [bold]Risk Flags ({len(flags)}):[/bold]")
     for i, flag in enumerate(flags, 1):
-        icon = SEVERITY_ICON.get(flag["severity"], "(-)")
-        print(f"  {i}. {icon} [{flag['severity'].upper()}] {flag['category']}")
-        print(f"     {flag['description']}\n")
+        icon      = SEVERITY_ICON.get(flag["severity"], "(-)")
+        sev_color = "red" if flag["severity"] == "high" else "yellow"
+        console.print(
+            f"\n  {i}. {icon} [{sev_color}][{flag['severity'].upper()}][/{sev_color}] "
+            f"[bold]{flag['category']}[/bold]"
+        )
+        console.print(f"     {flag['description']}", style="dim")
 
-    positives = payload.get("positive_signals", [])
-    if positives:
-        print(f"  Positive Signals:")
-        for sig in positives:
-            print(f"  (+) {sig}")
+    console.print(f"\n  [bold]Skeptic summary:[/bold]")
+    console.print(f"  {payload.get('summary', '')}", style="dim")
 
-    print(f"\n  Skeptic summary:")
-    print(f"  {payload.get('summary', '')}")
-    print(f"\n{'#' * 56}")
-    print("  OPTIONS:")
-    print("  - Press Enter              → approve and continue to Synthesizer")
-    print("  - Type a note + Enter      → approve with your edits attached")
-    print("  - Type 'abort' + Enter     → cancel this run")
-    print(f"{'#' * 56}")
+    console.print(Rule())
+    console.print("  [dim]Enter[/dim]          → approve, generate report")
+    console.print("  [dim]Type a note[/dim]    → approve with analyst note attached")
+    console.print("  [dim]abort[/dim]          → cancel run")
+    console.print(Rule())
 
 
 def _get_human_decision() -> dict:
-    """Reads human input from the terminal and returns a resume payload."""
     try:
         raw = input("\n  Your decision: ").strip()
     except (EOFError, KeyboardInterrupt):
-        print("\n  Interrupted — aborting run.")
+        console.print("\n  [yellow]Interrupted — aborting.[/yellow]")
         return {"approved": False, "edits": None}
 
     if raw.lower() == "abort":
-        print("  Run aborted.")
+        console.print("  [red]Run aborted.[/red]")
         return {"approved": False, "edits": None}
 
     edits = raw if raw else None
-    print("  Approved." + (f" Edits noted: '{edits}'" if edits else ""))
+    console.print(
+        "  [green]Approved.[/green]"
+        + (f" Analyst note: '{edits}'" if edits else "")
+    )
     return {"approved": True, "edits": edits}
 
 
-# ─── Main run loop ─────────────────────────────────────────────────────────────
-
 def run(company: str) -> None:
-    # Each run gets a unique thread_id so the checkpointer can store its state
-    # independently from other runs. In Week 5 this becomes a UUID returned
-    # by POST /analyze and stored in the database.
     thread_id = str(uuid.uuid4())
     config    = {"configurable": {"thread_id": thread_id}}
+
+    console.print(Rule(f"[bold]FirmSignal[/bold] — {company}"))
+    console.print(f"  Thread: [dim]{thread_id[:8]}...[/dim]\n")
 
     initial_state: FirmState = {
         "company_name":      company,
@@ -142,30 +144,27 @@ def run(company: str) -> None:
         "error":             None,
     }
 
-    print(f"\nStarting FirmSignal run for '{company}'  (thread: {thread_id[:8]}...)")
-
-    # ── Phase 1: Scout → Accountant → Skeptic → HITL (pauses here) ────────────
+    # Phase 1: Scout → Accountant → Skeptic → HITL pause
     app.invoke(initial_state, config=config)
 
-    # Check whether the graph is paused or finished
     current_state = app.get_state(config)
 
-    if not current_state.next:
-        # Graph finished without interrupting (shouldn't happen with HITL node,
-        # but handles the error path gracefully)
-        print("\nRun completed without reaching HITL.")
-        _print_final(current_state.values)
+    if current_state.values.get("error"):
+        console.print(f"\n[red]Error: {current_state.values['error']}[/red]")
         return
 
-    # ── Graph is paused at HITL ────────────────────────────────────────────────
-    # Retrieve the interrupt payload from the paused task
+    if not current_state.next:
+        console.print("\n[yellow]Run ended without HITL — check graph configuration.[/yellow]")
+        return
+
+    # Retrieve interrupt payload
     interrupt_payload = None
     for task in current_state.tasks:
         if task.interrupts:
             interrupt_payload = task.interrupts[0].value
             break
 
-    # Display intermediate results then the HITL review prompt
+    # Print intermediate results
     values = current_state.values
     if values.get("scout_output"):
         _print_scout(values["scout_output"])
@@ -174,28 +173,29 @@ def run(company: str) -> None:
     if values.get("skeptic_output"):
         _print_skeptic(values["skeptic_output"])
 
+    # HITL prompt
     _print_hitl_prompt(interrupt_payload or {})
-
-    # ── Phase 2: get human decision, resume graph ──────────────────────────────
     decision = _get_human_decision()
 
+    # Phase 2: Resume → Synthesizer → END
     final = app.invoke(Command(resume=decision), config=config)
 
     if final.get("error"):
-        print(f"\nError after resume: {final['error']}")
+        console.print(f"\n[red]Error: {final['error']}[/red]")
         return
 
-    print(f"\nRun complete. Total sources: {len(final.get('sources', []))}")
-    print("(Synthesizer output will appear here next week)")
+    brief = final.get("final_brief")
+    if not brief:
+        console.print("\n[yellow]Run aborted — no brief generated.[/yellow]")
+        return
 
-
-def _print_final(values: dict) -> None:
-    if values.get("scout_output"):
-        _print_scout(values["scout_output"])
-    if values.get("accountant_output"):
-        _print_accountant(values["accountant_output"])
-    if values.get("skeptic_output"):
-        _print_skeptic(values["skeptic_output"])
+    # Render the final brief
+    console.print(Rule("[bold green]Intelligence Brief[/bold green]"))
+    console.print(Markdown(brief))
+    console.print(Rule())
+    console.print(
+        f"  [dim]Total sources collected: {len(final.get('sources', []))}[/dim]"
+    )
 
 
 if __name__ == "__main__":

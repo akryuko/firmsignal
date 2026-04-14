@@ -119,3 +119,14 @@ class SkepticOutput(BaseModel):
     )
 
     sources_analyzed: int = Field(default=0)
+
+# ─── Synthesizer models ────────────────────────────────────────────────────────
+
+class SynthesizerOutput(BaseModel):
+    brief: str = Field(description="Full Markdown intelligence brief with inline citations")
+    word_count: int = 0
+    sources_cited: int = Field(
+        default=0,
+        description="Number of unique [N] citations used in the brief"
+    )
+    generated_at: str = ""
