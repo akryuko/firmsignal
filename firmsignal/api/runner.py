@@ -1,5 +1,4 @@
 import asyncio
-import uuid
 from concurrent.futures import ThreadPoolExecutor
 
 from langgraph.types import Command
@@ -8,45 +7,32 @@ from firmsignal.api.store import RunRecord, RunStatus
 from firmsignal.graph import app
 from firmsignal.state import FirmState
 
-# Single thread pool for all LangGraph runs.
-# LangGraph graph execution is CPU-bound + sync — we offload it here
-# so it never blocks the FastAPI event loop.
 _executor = ThreadPoolExecutor(max_workers=4)
 
 
 async def _put(record: RunRecord, event: str, data: dict) -> None:
-    """Push an SSE event into the run's queue."""
     await record.events.put({"event": event, "data": data})
 
 
 def _invoke_sync(state: FirmState, config: dict) -> None:
-    """Runs the graph synchronously (called in thread pool)."""
     app.invoke(state, config=config)
 
 
 def _resume_sync(decision: dict, config: dict) -> dict:
-    """Resumes the graph synchronously (called in thread pool)."""
     return app.invoke(Command(resume=decision), config=config)
 
 
 async def run_pipeline(record: RunRecord) -> None:
-    """
-    Async background task — drives one full FirmSignal run.
-
-    Sequence:
-    1. Build initial state, invoke graph in thread pool
-    2. Graph pauses at HITL — emit 'paused' SSE event
-    3. Wait for human decision via resume_event
-    4. Resume graph in thread pool
-    5. Emit 'complete' or 'aborted' SSE event
-    """
-    company   = record.company
-    run_id    = record.run_id
-    config    = {"configurable": {"thread_id": run_id}}
-    loop      = asyncio.get_event_loop()
+    company = record.company
+    run_id  = record.run_id
+    config  = {"configurable": {"thread_id": run_id}}
+    loop    = asyncio.get_event_loop()
 
     initial_state: FirmState = {
-        "company_name":      company,
+        "company_name":     company,
+        "ticker_hint":      None,
+        "is_private_hint":  False,
+        "input_correction": None,
         "scout_output":      None,
         "accountant_output": None,
         "skeptic_output":    None,
@@ -58,23 +44,25 @@ async def run_pipeline(record: RunRecord) -> None:
         "error":             None,
     }
 
-    # ── Phase 1 ────────────────────────────────────────────────────────────────
-
-    await _put(record, "agent_start", {"agent": "scout", "company": company})
+    # ── Emit granular progress events before each agent ────────────────────────
+    await _put(record, "agent_start", {
+        "agent": "normalizer",
+        "log":   f"Resolving company name: '{company}'..."
+    })
+    await _put(record, "agent_start", {
+        "agent": "scout",
+        "log":   "Searching for recent news and leadership changes..."
+    })
 
     try:
-        # Run graph in thread pool — won't block the event loop
-        await loop.run_in_executor(
-            _executor, _invoke_sync, initial_state, config
-        )
+        await loop.run_in_executor(_executor, _invoke_sync, initial_state, config)
     except Exception as e:
         record.status = RunStatus.ERROR
         record.error  = str(e)
         await _put(record, "error", {"message": str(e)})
-        await record.events.put(None)   # sentinel — closes the SSE stream
+        await record.events.put(None)
         return
 
-    # Read the paused state
     graph_state = app.get_state(config)
 
     if graph_state.values.get("error"):
@@ -85,29 +73,56 @@ async def run_pipeline(record: RunRecord) -> None:
         await record.events.put(None)
         return
 
-    # Pull each agent's output out of state and emit as SSE events
     values = graph_state.values
 
+    # Emit correction notice if normalizer changed the name
+    correction = values.get("input_correction")
+    if correction:
+        await _put(record, "correction", {
+            "original":  company,
+            "resolved":  values.get("company_name"),
+            "note":      correction,
+        })
+
+    # Emit each agent's completed output
     if values.get("scout_output"):
         await _put(record, "agent_complete", {
             "agent":  "scout",
+            "log":    f"Found {len(values['scout_output'].get('news_items', []))} news items and {len(values['scout_output'].get('leadership_changes', []))} leadership changes",
             "output": values["scout_output"],
         })
 
+    await _put(record, "agent_start", {
+        "agent": "accountant",
+        "log":   "Pulling financials and 5-year price history..."
+    })
+
     if values.get("accountant_output"):
+        acc = values["accountant_output"]
+        if acc.get("is_public"):
+            log = f"Ticker: {acc.get('ticker')} · Cap: {acc.get('market_cap_formatted')} · {len(acc.get('price_history', []))} months of price data"
+        else:
+            log = "Private company — no public market data"
         await _put(record, "agent_complete", {
             "agent":  "accountant",
-            "output": values["accountant_output"],
+            "log":    log,
+            "output": acc,
         })
 
+    await _put(record, "agent_start", {
+        "agent": "skeptic",
+        "log":   "Analysing sentiment, Glassdoor reviews, and risk signals..."
+    })
+
     if values.get("skeptic_output"):
+        skep = values["skeptic_output"]
         await _put(record, "agent_complete", {
             "agent":  "skeptic",
-            "output": values["skeptic_output"],
+            "log":    f"Sentiment: {skep.get('sentiment_score', 0):+.2f} ({skep.get('sentiment_label')}) · {len(skep.get('risk_flags', []))} risk flags",
+            "output": skep,
         })
 
     # ── HITL pause ─────────────────────────────────────────────────────────────
-
     interrupt_payload = None
     for task in graph_state.tasks:
         if task.interrupts:
@@ -118,7 +133,7 @@ async def run_pipeline(record: RunRecord) -> None:
     record.hitl_data = interrupt_payload
 
     await _put(record, "hitl_required", {
-        "company":          company,
+        "company":          values.get("company_name", company),
         "sentiment_score":  interrupt_payload.get("sentiment_score") if interrupt_payload else None,
         "sentiment_label":  interrupt_payload.get("sentiment_label") if interrupt_payload else None,
         "risk_flags":       interrupt_payload.get("risk_flags", []) if interrupt_payload else [],
@@ -128,8 +143,6 @@ async def run_pipeline(record: RunRecord) -> None:
     })
 
     # ── Wait for human ─────────────────────────────────────────────────────────
-
-    # Blocks here until POST /resume/{run_id} fires resume_event
     await record.resume_event.wait()
     decision = record.resume_payload
 
@@ -140,13 +153,13 @@ async def run_pipeline(record: RunRecord) -> None:
         return
 
     # ── Phase 2: Resume ────────────────────────────────────────────────────────
-
-    await _put(record, "agent_start", {"agent": "synthesizer"})
+    await _put(record, "agent_start", {
+        "agent": "synthesizer",
+        "log":   "Writing cited intelligence brief with Claude Sonnet..."
+    })
 
     try:
-        final = await loop.run_in_executor(
-            _executor, _resume_sync, decision, config
-        )
+        final = await loop.run_in_executor(_executor, _resume_sync, decision, config)
     except Exception as e:
         record.status = RunStatus.ERROR
         record.error  = str(e)
@@ -161,16 +174,21 @@ async def run_pipeline(record: RunRecord) -> None:
         await record.events.put(None)
         return
 
-    brief = final.get("final_brief")
+    brief         = final.get("final_brief")
     record.brief  = brief
     record.status = RunStatus.COMPLETE
 
-    await _put(record, "complete", {
-        "run_id":         run_id,
-        "brief":          brief,
-        "sources_count":  len(final.get("sources", [])),
-        "sources":        final.get("sources", []),
+    await _put(record, "agent_complete", {
+        "agent": "synthesizer",
+        "log":   "Brief generated successfully",
     })
 
-    # Sentinel — tells the SSE stream it can close
+    await _put(record, "complete", {
+        "run_id":        run_id,
+        "brief":         brief,
+        "sources_count": len(final.get("sources", [])),
+        "sources":       final.get("sources", []),
+        "company":       final.get("company_name", company),
+    })
+
     await record.events.put(None)

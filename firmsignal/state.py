@@ -6,6 +6,11 @@ from langgraph.graph.message import add_messages
 class FirmState(TypedDict):
     company_name: str
 
+    # Normalizer output
+    ticker_hint:      str | None   # ticker resolved before Accountant runs
+    is_private_hint:  bool         # private company flag from normalizer
+    input_correction: str | None   # human-readable correction note for UI
+
     # Agent outputs — stored as dicts after .model_dump()
     scout_output: dict | None
     accountant_output: dict | None
