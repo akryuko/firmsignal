@@ -34,7 +34,7 @@ export function CitedBrief({ brief, sources }: Props) {
   const clickable = makeClickable(brief, index)
 
   return (
-    <div className="prose prose-slate prose-sm max-w-none
+    <div className="prose prose-slate prose-base max-w-none
       prose-headings:font-semibold prose-headings:text-slate-800
       prose-p:text-slate-700 prose-p:leading-relaxed
       prose-a:text-emerald-600 prose-a:no-underline

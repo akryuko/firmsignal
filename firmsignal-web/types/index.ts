@@ -54,6 +54,11 @@ export interface AccountantOutput {
   price_history: PricePoint[]
   price_change_1y: number | null
   price_change_5y: number | null
+  analyst_recommendation: string | null
+  analyst_count: number | null
+  target_price_mean: number | null
+  target_price_high: number | null
+  target_price_low: number | null
   financial_summary: string
 }
 

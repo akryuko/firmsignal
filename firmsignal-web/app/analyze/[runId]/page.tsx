@@ -32,12 +32,12 @@ export default function AnalyzePage() {
 
   return (
     <main className="mx-auto max-w-xl px-4 py-16">
-      <div className="mb-8">
-        <h1 className="text-xl font-semibold text-slate-900">
-          📡 Analysing{" "}
+      <div className="mb-10">
+        <h1 className="text-2xl font-bold text-slate-900">
+          Analysing{" "}
           <span className="text-emerald-600">{company}</span>
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-2 text-base text-slate-500">
           Pipeline running — each agent reports when complete
         </p>
       </div>
