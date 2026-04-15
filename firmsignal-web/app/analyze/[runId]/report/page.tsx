@@ -39,14 +39,19 @@ const REC_LABELS: Record<string, string> = {
   strongSell:   "Strong Sell",
 }
 
+function toCamel(s: string) {
+  return s.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())
+}
+
 function RecBadge({ rec }: { rec: string }) {
+  const key = toCamel(rec)
   return (
     <span className={cn(
       "inline-flex items-center rounded-md px-2.5 py-1",
       "text-sm font-bold uppercase tracking-wide",
-      REC_STYLES[rec] ?? "bg-slate-100 text-slate-700",
+      REC_STYLES[key] ?? "bg-slate-100 text-slate-700",
     )}>
-      {REC_LABELS[rec] ?? rec}
+      {REC_LABELS[key] ?? REC_LABELS[rec] ?? rec.replace(/_/g, " ")}
     </span>
   )
 }
