@@ -96,6 +96,7 @@ export interface Source {
   title: string
   agent: string
   retrieved_at: string
+  tier?: number  // 1=primary, 2=secondary, 3=acceptable, null=unknown
 }
 
 export interface AgentOutputs {

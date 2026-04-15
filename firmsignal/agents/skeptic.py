@@ -8,6 +8,13 @@ from tavily import TavilyClient
 from firmsignal.models import SkepticOutput
 from firmsignal.state import FirmState
 from firmsignal.tools.cache import get_cached, set_cached
+from firmsignal.tools.source_quality import (
+    EXCLUDED_DOMAINS,
+    TRUSTED_NEWS_DOMAINS,
+    TRUSTED_SENTIMENT_DOMAINS,
+    filter_results,
+    get_source_tier,
+)
 
 
 # ─── Reddit ───────────────────────────────────────────────────────────────────
@@ -73,7 +80,13 @@ def _search_reddit(company: str) -> list[dict]:
 
 # ─── Tavily ───────────────────────────────────────────────────────────────────
 
-def _search(client: TavilyClient, query: str, max_results: int = 4) -> list[dict]:
+def _search(
+    client: TavilyClient,
+    query: str,
+    max_results: int = 4,
+    include_domains: list[str] | None = None,
+    exclude_domains: list[str] | None = None,
+) -> list[dict]:
     """Tavily search with shared Redis cache."""
     cached = get_cached(query)
     if cached is not None:
@@ -81,11 +94,16 @@ def _search(client: TavilyClient, query: str, max_results: int = 4) -> list[dict
         return cached
     print(f"    [tavily]    {query}")
     try:
-        response = client.search(
-            query=query,
-            search_depth="advanced",
-            max_results=max_results,
-        )
+        kwargs: dict = {
+            "query": query,
+            "search_depth": "advanced",
+            "max_results": max_results,
+        }
+        if include_domains:
+            kwargs["include_domains"] = include_domains
+        if exclude_domains:
+            kwargs["exclude_domains"] = exclude_domains
+        response = client.search(**kwargs)
         results = response.get("results", [])
         set_cached(query, results)
         return results
@@ -100,7 +118,25 @@ _SYSTEM = """\
 You are a critical research analyst. Your job is to identify risks and red flags.
 Be genuinely skeptical — your role is to find real problems, not summarise PR material.
 
-Rules:
+SOURCE QUALITY RULES — MANDATORY:
+- Weight evidence by source credibility. Reuters, Bloomberg, SEC filings, and official
+  company communications carry 10x more weight than blog posts or anonymous reviews.
+- A risk flag requires at least ONE credible primary or secondary source.
+  A single Glassdoor review is noise. Patterns across 10+ reviews = signal.
+- If the only source for a claim is a personal blog, forum post, or unverified social
+  media — do not include it as a risk flag.
+- For legal/regulatory risks: only cite if from the regulator itself, a major news
+  outlet, or official court records.
+- For financial risks: only cite if from SEC filings, earnings calls, or Tier 1
+  financial press (Bloomberg, Reuters, FT, WSJ).
+- Distinguish between: confirmed facts, credible reports, and rumors. Label each
+  risk flag's evidence type in your description using these prefixes:
+    "Confirmed:" — from official source or major outlet
+    "Reported:"  — from credible secondary source
+    "Alleged:"   — from lawsuit or regulatory filing not yet resolved
+    "Rumored:"   — multiple credible sources but unconfirmed
+
+ANALYSIS RULES:
 - Prioritise patterns over single incidents. One complaint = noise. Five = signal.
 - Distinguish company-generated content from genuine employee or investor opinions.
 - risk_flags: only substantive risks, not trivial criticism. Max 5.
@@ -176,9 +212,33 @@ def skeptic_node(state: FirmState) -> dict:
         # Step 2: Three Tavily queries targeting the three main risk areas
         tavily = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
 
-        glassdoor  = _search(tavily, f"{company} Glassdoor employee reviews culture {year}")
-        controversy = _search(tavily, f"{company} controversy lawsuit scandal criticism {year}")
-        layoffs    = _search(tavily, f"{company} layoffs workforce reduction problems {year}")
+        glassdoor = filter_results(
+            _search(
+                tavily,
+                f"{company} Glassdoor employee reviews culture {year}",
+                include_domains=TRUSTED_SENTIMENT_DOMAINS,
+                exclude_domains=EXCLUDED_DOMAINS,
+            ),
+            min_tier=3,
+        )
+        controversy = filter_results(
+            _search(
+                tavily,
+                f"{company} controversy lawsuit scandal criticism {year}",
+                include_domains=TRUSTED_NEWS_DOMAINS,
+                exclude_domains=EXCLUDED_DOMAINS,
+            ),
+            min_tier=2,
+        )
+        layoffs = filter_results(
+            _search(
+                tavily,
+                f"{company} layoffs workforce reduction problems {year}",
+                include_domains=TRUSTED_NEWS_DOMAINS,
+                exclude_domains=EXCLUDED_DOMAINS,
+            ),
+            min_tier=2,
+        )
 
         web_results = glassdoor + controversy + layoffs
         total = len(reddit_posts) + len(web_results)
@@ -208,6 +268,7 @@ def skeptic_node(state: FirmState) -> dict:
                 "title": p["title"],
                 "agent": "skeptic",
                 "retrieved_at": today,
+                "tier": get_source_tier(p["url"]),
             }
             for p in reddit_posts
         ] + [
@@ -216,6 +277,7 @@ def skeptic_node(state: FirmState) -> dict:
                 "title": r.get("title", ""),
                 "agent": "skeptic",
                 "retrieved_at": today,
+                "tier": get_source_tier(r["url"]),
             }
             for r in web_results
             if r.get("url")

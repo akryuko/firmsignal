@@ -6,6 +6,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from firmsignal.models import SynthesizerOutput
 from firmsignal.state import FirmState
+from firmsignal.tools.source_quality import get_source_tier
 
 
 # ─── System prompt ─────────────────────────────────────────────────────────────
@@ -22,6 +23,15 @@ CITATION RULE — MANDATORY:
 Every factual claim must end with an inline citation: [1], [2], etc.
 Match each claim to the closest source URL in the numbered source list.
 A brief with uncited claims is unacceptable.
+
+SOURCE QUALITY RULES:
+- Prefer citing Tier 1 sources (Reuters, Bloomberg, SEC, official company communications)
+  over secondary sources when both support the same claim.
+- Never cite a source that looks like a personal social media post or random blog.
+- For financial figures: only cite from SEC filings, earnings releases, or major
+  financial press (Bloomberg, Reuters, FT, WSJ).
+- Label unconfirmed claims clearly: "reportedly", "according to unverified reports" —
+  never state them as established fact.
 
 WRITING RULES:
 - Lead with the most important insight in the Executive Summary — risk or opportunity.
@@ -49,6 +59,23 @@ OUTPUT FORMAT (use exactly these section headers):
 **Bear case:**
 
 (Do NOT include a Sources section — citations are handled separately by the UI)"""
+
+
+# ─── Source validation ────────────────────────────────────────────────────────
+
+def _validate_sources(sources: list[dict]) -> list[dict]:
+    """
+    Drops blocked sources (tier == -1) before the Synthesizer sees them.
+    Unknown domains (tier == None) are kept — better to cite than to drop.
+    """
+    clean = []
+    for s in sources:
+        tier = get_source_tier(s.get("url", ""))
+        if tier == -1:
+            print(f"[Synthesizer] Dropping blocked source: {s.get('url')}")
+            continue
+        clean.append(s)
+    return clean
 
 
 # ─── Context builder ───────────────────────────────────────────────────────────
@@ -217,7 +244,7 @@ def synthesizer_node(state: FirmState) -> dict:
 
     company = state["company_name"]
     today   = datetime.now().strftime("%Y-%m-%d")
-    sources = state.get("sources", [])
+    sources = _validate_sources(state.get("sources", []))
 
     print(f"\n[Synthesizer] Generating intelligence brief for '{company}'...")
     print(f"[Synthesizer] Using Claude Sonnet · {len(sources)} sources available")
