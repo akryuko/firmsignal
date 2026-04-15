@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Any
 
 
 class AnalyzeRequest(BaseModel):
@@ -28,3 +29,13 @@ class RunStatusResponse(BaseModel):
     hitl_approved: bool | None = None
     has_brief: bool = False
     error: str | None = None
+
+
+class PdfRequest(BaseModel):
+    company: str
+    brief: str | None = None
+    accountant: dict[str, Any] | None = None
+    skeptic: dict[str, Any] | None = None
+    sources: list[dict[str, Any]] = []
+    ticker: str | None = None
+    correction_note: str | None = None

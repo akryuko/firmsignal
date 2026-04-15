@@ -130,3 +130,41 @@
     line-height: 1.6;
   }
 }
+
+@media print {
+  @page {
+    margin: 1.5cm 2cm;
+    size: A4 portrait;
+  }
+
+  /* Preserve background colors and borders */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body {
+    background: white !important;
+    font-size: 11pt;
+  }
+
+  /* Force details/summary open so sources are visible */
+  details {
+    display: block !important;
+  }
+  details > summary {
+    display: none !important;
+  }
+
+  /* Avoid splitting cards and tables across pages */
+  .rounded-xl,
+  table,
+  tr {
+    break-inside: avoid;
+  }
+
+  /* Keep section headers with their following content */
+  h1, h2, h3 {
+    break-after: avoid;
+  }
+}

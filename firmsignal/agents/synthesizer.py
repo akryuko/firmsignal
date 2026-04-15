@@ -48,11 +48,7 @@ OUTPUT FORMAT (use exactly these section headers):
 **Bull case:**
 **Bear case:**
 
----
-### Sources
-[1] Title — URL
-[2] Title — URL
-(only list sources you actually cited above)"""
+(Do NOT include a Sources section — citations are handled separately by the UI)"""
 
 
 # ─── Context builder ───────────────────────────────────────────────────────────
