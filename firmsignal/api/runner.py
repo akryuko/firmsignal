@@ -1,11 +1,12 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
-from langgraph.types import Command
-
+from firmsignal.agents.accountant  import accountant_node
+from firmsignal.agents.normalizer  import normalizer_node
+from firmsignal.agents.scout       import scout_node
+from firmsignal.agents.skeptic     import skeptic_node
+from firmsignal.agents.synthesizer import synthesizer_node
 from firmsignal.api.store import RunRecord, RunStatus
-from firmsignal.graph import app
-from firmsignal.state import FirmState
 
 _executor = ThreadPoolExecutor(max_workers=4)
 
@@ -14,21 +15,26 @@ async def _put(record: RunRecord, event: str, data: dict) -> None:
     await record.events.put({"event": event, "data": data})
 
 
-def _invoke_sync(state: FirmState, config: dict) -> None:
-    app.invoke(state, config=config)
-
-
-def _resume_sync(decision: dict, config: dict) -> dict:
-    return app.invoke(Command(resume=decision), config=config)
+async def _error(record: RunRecord, msg: str) -> None:
+    record.status = RunStatus.ERROR
+    record.error  = msg
+    await _put(record, "error", {"message": msg})
+    await record.events.put(None)
 
 
 async def run_pipeline(record: RunRecord) -> None:
+    """
+    Runs the FirmSignal pipeline agent by agent, emitting SSE events
+    in real time between each step.
+
+    Each agent is called directly (not via app.stream) so we control
+    exactly when progress events fire — no LangGraph stream buffering.
+    """
     company = record.company
     run_id  = record.run_id
-    config  = {"configurable": {"thread_id": run_id}}
     loop    = asyncio.get_event_loop()
 
-    initial_state: FirmState = {
+    state: dict = {
         "company_name":     company,
         "ticker_hint":      None,
         "is_private_hint":  False,
@@ -44,105 +50,111 @@ async def run_pipeline(record: RunRecord) -> None:
         "error":             None,
     }
 
-    # ── Emit granular progress events before each agent ────────────────────────
-    await _put(record, "agent_start", {
-        "agent": "normalizer",
-        "log":   f"Resolving company name: '{company}'..."
-    })
+    async def run_node(fn):
+        """Run a sync agent node in the thread pool. Returns its state update."""
+        try:
+            return await loop.run_in_executor(_executor, fn, dict(state))
+        except Exception as e:
+            return {"error": f"{fn.__name__} raised: {type(e).__name__}: {e}"}
+
+    # ── 1. Normalizer ─────────────────────────────────────────────────────────
+    result = await run_node(normalizer_node)
+    if result.get("error"):
+        await _error(record, result["error"])
+        return
+    state.update(result)
+
+    if state.get("input_correction"):
+        await _put(record, "correction", {
+            "original": company,
+            "resolved": state["company_name"],
+            "note":     state["input_correction"],
+        })
+
+    # ── 2. Scout ──────────────────────────────────────────────────────────────
     await _put(record, "agent_start", {
         "agent": "scout",
-        "log":   "Searching for recent news and leadership changes..."
+        "log":   "Searching for recent news and leadership changes...",
     })
 
-    try:
-        await loop.run_in_executor(_executor, _invoke_sync, initial_state, config)
-    except Exception as e:
-        record.status = RunStatus.ERROR
-        record.error  = str(e)
-        await _put(record, "error", {"message": str(e)})
-        await record.events.put(None)
+    result = await run_node(scout_node)
+    if result.get("error"):
+        await _error(record, result["error"])
         return
+    state.update(result)
 
-    graph_state = app.get_state(config)
+    scout_out = state.get("scout_output") or {}
+    await _put(record, "agent_complete", {
+        "agent":  "scout",
+        "log":    (
+            f"Found {len(scout_out.get('news_items', []))} news items and "
+            f"{len(scout_out.get('leadership_changes', []))} leadership changes"
+        ),
+        "output": scout_out,
+    })
 
-    if graph_state.values.get("error"):
-        err = graph_state.values["error"]
-        record.status = RunStatus.ERROR
-        record.error  = err
-        await _put(record, "error", {"message": err})
-        await record.events.put(None)
-        return
-
-    values = graph_state.values
-
-    # Emit correction notice if normalizer changed the name
-    correction = values.get("input_correction")
-    if correction:
-        await _put(record, "correction", {
-            "original":  company,
-            "resolved":  values.get("company_name"),
-            "note":      correction,
-        })
-
-    # Emit each agent's completed output
-    if values.get("scout_output"):
-        await _put(record, "agent_complete", {
-            "agent":  "scout",
-            "log":    f"Found {len(values['scout_output'].get('news_items', []))} news items and {len(values['scout_output'].get('leadership_changes', []))} leadership changes",
-            "output": values["scout_output"],
-        })
-
+    # ── 3. Accountant ─────────────────────────────────────────────────────────
     await _put(record, "agent_start", {
         "agent": "accountant",
-        "log":   "Pulling financials and 5-year price history..."
+        "log":   "Pulling financials and 5-year price history...",
     })
 
-    if values.get("accountant_output"):
-        acc = values["accountant_output"]
-        if acc.get("is_public"):
-            log = f"Ticker: {acc.get('ticker')} · Cap: {acc.get('market_cap_formatted')} · {len(acc.get('price_history', []))} months of price data"
-        else:
-            log = "Private company — no public market data"
-        await _put(record, "agent_complete", {
-            "agent":  "accountant",
-            "log":    log,
-            "output": acc,
-        })
+    result = await run_node(accountant_node)
+    if result.get("error"):
+        await _error(record, result["error"])
+        return
+    state.update(result)
 
+    acc = state.get("accountant_output") or {}
+    acc_log = (
+        f"Ticker: {acc.get('ticker')} · Cap: {acc.get('market_cap_formatted')} · "
+        f"{len(acc.get('price_history', []))} months of price data"
+        if acc.get("is_public")
+        else "Private company — no public market data"
+    )
+    await _put(record, "agent_complete", {
+        "agent":  "accountant",
+        "log":    acc_log,
+        "output": acc,
+    })
+
+    # ── 4. Skeptic ────────────────────────────────────────────────────────────
     await _put(record, "agent_start", {
         "agent": "skeptic",
-        "log":   "Analysing sentiment, Glassdoor reviews, and risk signals..."
+        "log":   "Analysing sentiment, reviews, and risk signals...",
     })
 
-    if values.get("skeptic_output"):
-        skep = values["skeptic_output"]
-        await _put(record, "agent_complete", {
-            "agent":  "skeptic",
-            "log":    f"Sentiment: {skep.get('sentiment_score', 0):+.2f} ({skep.get('sentiment_label')}) · {len(skep.get('risk_flags', []))} risk flags",
-            "output": skep,
-        })
+    result = await run_node(skeptic_node)
+    if result.get("error"):
+        await _error(record, result["error"])
+        return
+    state.update(result)
 
-    # ── HITL pause ─────────────────────────────────────────────────────────────
-    interrupt_payload = None
-    for task in graph_state.tasks:
-        if task.interrupts:
-            interrupt_payload = task.interrupts[0].value
-            break
+    skep = state.get("skeptic_output") or {}
+    await _put(record, "agent_complete", {
+        "agent":  "skeptic",
+        "log":    (
+            f"Sentiment: {skep.get('sentiment_score', 0):+.2f} "
+            f"({skep.get('sentiment_label')}) · "
+            f"{len(skep.get('risk_flags', []))} risk flags"
+        ),
+        "output": skep,
+    })
 
+    # ── 5. HITL pause ─────────────────────────────────────────────────────────
     record.status    = RunStatus.PAUSED
-    record.hitl_data = interrupt_payload
+    record.hitl_data = skep  # store for reference
 
     await _put(record, "hitl_required", {
-        "company":          values.get("company_name", company),
-        "sentiment_score":  interrupt_payload.get("sentiment_score") if interrupt_payload else None,
-        "sentiment_label":  interrupt_payload.get("sentiment_label") if interrupt_payload else None,
-        "risk_flags":       interrupt_payload.get("risk_flags", []) if interrupt_payload else [],
-        "positive_signals": interrupt_payload.get("positive_signals", []) if interrupt_payload else [],
-        "summary":          interrupt_payload.get("summary", "") if interrupt_payload else "",
-        "sources_analyzed": interrupt_payload.get("sources_analyzed", 0) if interrupt_payload else 0,
+        "company":          state["company_name"],
+        "sentiment_score":  skep.get("sentiment_score"),
+        "sentiment_label":  skep.get("sentiment_label"),
+        "risk_flags":       skep.get("risk_flags", []),
+        "positive_signals": skep.get("positive_signals", []),
+        "summary":          skep.get("summary", ""),
+        "sources_analyzed": skep.get("sources_analyzed", 0),
     })
 
-    # ── Wait for human ─────────────────────────────────────────────────────────
     await record.resume_event.wait()
     decision = record.resume_payload
 
@@ -152,29 +164,21 @@ async def run_pipeline(record: RunRecord) -> None:
         await record.events.put(None)
         return
 
-    # ── Phase 2: Resume ────────────────────────────────────────────────────────
+    # ── 6. Synthesizer ────────────────────────────────────────────────────────
     await _put(record, "agent_start", {
         "agent": "synthesizer",
-        "log":   "Writing cited intelligence brief with Claude Sonnet..."
+        "log":   "Writing cited intelligence brief with Claude Sonnet...",
     })
 
-    try:
-        final = await loop.run_in_executor(_executor, _resume_sync, decision, config)
-    except Exception as e:
-        record.status = RunStatus.ERROR
-        record.error  = str(e)
-        await _put(record, "error", {"message": str(e)})
-        await record.events.put(None)
+    state["hitl_approved"] = True
+    state["hitl_edits"]    = decision.get("edits")
+
+    result = await run_node(synthesizer_node)
+    if result.get("error"):
+        await _error(record, result["error"])
         return
 
-    if final.get("error"):
-        record.status = RunStatus.ERROR
-        record.error  = final["error"]
-        await _put(record, "error", {"message": final["error"]})
-        await record.events.put(None)
-        return
-
-    brief         = final.get("final_brief")
+    brief         = result.get("final_brief")
     record.brief  = brief
     record.status = RunStatus.COMPLETE
 
@@ -182,13 +186,11 @@ async def run_pipeline(record: RunRecord) -> None:
         "agent": "synthesizer",
         "log":   "Brief generated successfully",
     })
-
     await _put(record, "complete", {
         "run_id":        run_id,
         "brief":         brief,
-        "sources_count": len(final.get("sources", [])),
-        "sources":       final.get("sources", []),
-        "company":       final.get("company_name", company),
+        "sources_count": len(state.get("sources", [])),
+        "sources":       state.get("sources", []),
+        "company":       state["company_name"],
     })
-
     await record.events.put(None)

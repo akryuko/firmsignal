@@ -115,6 +115,11 @@ def _pull_data(ticker_str: str) -> tuple[dict, list[PricePoint]] | None:
         "industry":         info.get("industry", ""),
         "change_1y":        change_1y,
         "change_5y":        change_5y,
+        "analyst_recommendation": info.get("recommendationKey"),
+        "analyst_count":          info.get("numberOfAnalystOpinions"),
+        "target_price_mean":      info.get("targetMeanPrice"),
+        "target_price_high":      info.get("targetHighPrice"),
+        "target_price_low":       info.get("targetLowPrice"),
     }
 
     return fundamentals, price_history
@@ -232,6 +237,11 @@ def accountant_node(state: FirmState) -> dict:
             price_history=price_history,
             price_change_1y=f["change_1y"],
             price_change_5y=f["change_5y"],
+            analyst_recommendation=f.get("analyst_recommendation"),
+            analyst_count=f.get("analyst_count"),
+            target_price_mean=round(f["target_price_mean"], 2) if f.get("target_price_mean") else None,
+            target_price_high=round(f["target_price_high"], 2) if f.get("target_price_high") else None,
+            target_price_low=round(f["target_price_low"], 2) if f.get("target_price_low") else None,
             financial_summary=summary,
         )
 

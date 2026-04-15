@@ -67,50 +67,50 @@ export default function ReviewPage() {
   return (
     <main className="mx-auto max-w-4xl px-4 py-10">
 
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-slate-900">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-slate-900">
           📡 {company} — Review Required
         </h1>
         {correctionNote && (
-          <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-base text-amber-800">
             🔄 {correctionNote}
           </div>
         )}
       </div>
 
       {/* Scout + Accountant */}
-      <div className="grid gap-6 md:grid-cols-2 mb-6">
+      <div className="grid gap-6 md:grid-cols-2 mb-8">
 
-        <div className="rounded-lg border p-4">
-          <h2 className="mb-3 text-sm font-semibold text-slate-700">
+        <div className="rounded-xl border bg-white p-5">
+          <h2 className="mb-4 text-base font-semibold text-slate-700">
             🔍 Recent News
           </h2>
           {scout?.news_items.slice(0, 4).map((item, i) => (
-            <div key={i} className="mb-3 last:mb-0">
-              <p className="text-sm font-medium text-slate-800 leading-snug">
+            <div key={i} className="mb-4 last:mb-0">
+              <p className="text-base font-medium text-slate-800 leading-snug">
                 {item.headline}
               </p>
-              <div className="mt-0.5 flex items-center gap-2">
-                <span className="text-xs text-slate-400">{item.date}</span>
+              <div className="mt-1 flex items-center gap-2">
+                <span className="text-sm text-slate-400">{item.date}</span>
                 <a
                   href={item.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-0.5 text-xs text-emerald-600 hover:underline"
+                  className="inline-flex items-center gap-1 text-sm text-emerald-600 hover:underline"
                 >
-                  Source <ExternalLink className="h-3 w-3" />
+                  Source <ExternalLink className="h-3.5 w-3.5" />
                 </a>
               </div>
             </div>
           ))}
           {(scout?.leadership_changes?.length ?? 0) > 0 && (
             <>
-              <Separator className="my-3" />
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <Separator className="my-4" />
+              <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">
                 Leadership Changes
               </h3>
               {scout!.leadership_changes.map((c, i) => (
-                <p key={i} className="text-sm text-slate-700">
+                <p key={i} className="text-base text-slate-700">
                   {c.name} ({c.role}) —{" "}
                   <Badge variant="outline" className="text-xs">
                     {c.change_type}
@@ -121,13 +121,13 @@ export default function ReviewPage() {
           )}
         </div>
 
-        <div className="rounded-lg border p-4">
-          <h2 className="mb-3 text-sm font-semibold text-slate-700">
+        <div className="rounded-xl border bg-white p-5">
+          <h2 className="mb-4 text-base font-semibold text-slate-700">
             💰 Financial Snapshot
           </h2>
           {acc?.is_public ? (
             <>
-              <div className="grid grid-cols-3 gap-3 mb-4">
+              <div className="grid grid-cols-3 gap-4 mb-4">
                 {[
                   { label: "Price",      value: `$${acc.current_price}` },
                   { label: "Market Cap", value: acc.market_cap_formatted ?? "N/A" },
@@ -147,8 +147,8 @@ export default function ReviewPage() {
                   },
                 ].map(({ label, value }) => (
                   <div key={label}>
-                    <p className="text-xs text-slate-500">{label}</p>
-                    <p className="text-sm font-semibold text-slate-800">
+                    <p className="text-sm text-slate-500">{label}</p>
+                    <p className="text-base font-semibold text-slate-800">
                       {String(value)}
                     </p>
                   </div>
@@ -159,55 +159,55 @@ export default function ReviewPage() {
               )}
             </>
           ) : (
-            <p className="text-sm text-slate-500">
+            <p className="text-base text-slate-500">
               Private company — no public market data available.
             </p>
           )}
         </div>
       </div>
 
-      <Separator className="my-6" />
+      <Separator className="my-8" />
 
       {/* Skeptic */}
       {skep && (
-        <div className="mb-6">
-          <h2 className="mb-3 text-sm font-semibold text-slate-700">
+        <div className="mb-8">
+          <h2 className="mb-4 text-base font-semibold text-slate-700">
             🔎 Skeptic Analysis
           </h2>
 
-          <div className="mb-4 flex items-center gap-3">
-            <span className="text-2xl font-bold text-slate-900">
+          <div className="mb-5 flex items-center gap-4">
+            <span className="text-3xl font-bold text-slate-900">
               {skep.sentiment_score != null
                 ? `${skep.sentiment_score > 0 ? "+" : ""}${skep.sentiment_score.toFixed(2)}`
                 : "N/A"}
             </span>
-            <span className="text-sm text-slate-600">
+            <span className="text-base text-slate-600">
               {SENT_EMOJI[skep.sentiment_label ?? ""] ?? "⚪"}{" "}
               {skep.sentiment_label?.replace(/_/g, " ")}
             </span>
-            <span className="ml-auto text-xs text-slate-400">
+            <span className="ml-auto text-sm text-slate-400">
               {skep.sources_analyzed} sources analysed
             </span>
           </div>
 
-          <div className="space-y-3 mb-4">
+          <div className="space-y-3 mb-5">
             {skep.risk_flags.map((flag, i) => (
-              <div key={i} className="rounded-lg border px-4 py-3">
-                <div className="flex items-start gap-2 mb-1">
+              <div key={i} className="rounded-xl border bg-white px-5 py-4">
+                <div className="flex items-start gap-2 mb-2">
                   <RiskBadge severity={flag.severity} />
-                  <span className="text-sm font-medium text-slate-800">
+                  <span className="text-base font-medium text-slate-800">
                     {flag.category}
                   </span>
                 </div>
-                <p className="text-sm text-slate-600">{flag.description}</p>
+                <p className="text-base text-slate-600">{flag.description}</p>
                 {flag.source_url && (
                   <a
                     href={flag.source_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-1 inline-flex items-center gap-0.5 text-xs text-emerald-600 hover:underline"
+                    className="mt-2 inline-flex items-center gap-1 text-sm text-emerald-600 hover:underline"
                   >
-                    View source <ExternalLink className="h-3 w-3" />
+                    View source <ExternalLink className="h-3.5 w-3.5" />
                   </a>
                 )}
               </div>
@@ -215,41 +215,41 @@ export default function ReviewPage() {
           </div>
 
           {skep.positive_signals.length > 0 && (
-            <div className="mb-4">
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <div className="mb-5">
+              <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">
                 Positive Signals
               </h3>
               {skep.positive_signals.map((sig, i) => (
-                <p key={i} className="text-sm text-slate-700">✅ {sig}</p>
+                <p key={i} className="text-base text-slate-700">✅ {sig}</p>
               ))}
             </div>
           )}
 
-          <div className="rounded-md bg-slate-50 border px-4 py-3 text-sm text-slate-700">
+          <div className="rounded-xl bg-white border px-5 py-4 text-base text-slate-700 leading-relaxed">
             {skep.summary}
           </div>
         </div>
       )}
 
-      <Separator className="my-6" />
+      <Separator className="my-8" />
 
       {/* Decision */}
       <div>
-        <h2 className="mb-2 text-sm font-semibold text-slate-700">
+        <h2 className="mb-3 text-base font-semibold text-slate-700">
           Your Decision
         </h2>
         <Textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="Optional analyst note — e.g. 'Focus on the legal risk, downplay the culture flag'"
-          className="mb-4 h-20 resize-none text-sm"
+          className="mb-4 h-24 resize-none text-base"
           disabled={resuming}
         />
         <div className="flex gap-3">
           <Button
             onClick={handleApprove}
             disabled={resuming}
-            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+            className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 text-white text-base rounded-xl"
           >
             {resuming ? (
               <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating report...</>
@@ -261,7 +261,7 @@ export default function ReviewPage() {
             variant="outline"
             onClick={handleAbort}
             disabled={resuming}
-            className="text-red-600 hover:text-red-700 hover:border-red-300"
+            className="h-11 rounded-xl text-base text-red-600 hover:text-red-700 hover:border-red-300"
           >
             Abort
           </Button>

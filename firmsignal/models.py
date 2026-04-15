@@ -68,6 +68,13 @@ class AccountantOutput(BaseModel):
     price_change_1y: float | None = None         # percentage, e.g. 65.3
     price_change_5y: float | None = None
 
+    # Analyst consensus (Wall Street, public companies only)
+    analyst_recommendation: str | None = None    # "strongBuy" | "buy" | "hold" | "sell" | "strongSell"
+    analyst_count: int | None = None
+    target_price_mean: float | None = None
+    target_price_high: float | None = None
+    target_price_low: float | None = None
+
     financial_summary: str = ""
 
 

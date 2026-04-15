@@ -13,8 +13,8 @@ const styles: Record<string, string> = {
 export function RiskBadge({ severity }: Props) {
   return (
     <span className={cn(
-      "inline-flex items-center rounded border px-1.5 py-0.5",
-      "text-[10px] font-semibold uppercase tracking-wide",
+      "inline-flex items-center rounded-md border px-2 py-0.5",
+      "text-xs font-semibold uppercase tracking-wide",
       styles[severity],
     )}>
       {severity}

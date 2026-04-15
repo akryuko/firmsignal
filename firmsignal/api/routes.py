@@ -3,15 +3,17 @@ import json
 import uuid
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 
 from firmsignal.api.models import (
     AnalyzeRequest,
     AnalyzeResponse,
+    PdfRequest,
     ResumeRequest,
     ResumeResponse,
     RunStatusResponse,
 )
+from firmsignal.api.pdf import build_pdf
 from firmsignal.api.runner import run_pipeline
 from firmsignal.api.store import RunStatus, create_run, get_run
 
@@ -114,6 +116,24 @@ async def resume(run_id: str, req: ResumeRequest):
 
     status = "resumed" if req.approved else "aborted"
     return ResumeResponse(run_id=run_id, status=status)
+
+
+# ── POST /api/pdf ─────────────────────────────────────────────────────────────
+
+@router.post("/pdf")
+async def generate_pdf(req: PdfRequest):
+    """
+    Generates a colour PDF from the frontend report data and returns it
+    as a file download — no print dialog, no preview.
+    """
+    filename = f"{req.company.replace(' ', '-')}-FirmSignal.pdf"
+    data = req.model_dump()
+    pdf_bytes = build_pdf(data)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 # ── GET /api/status/{run_id} ───────────────────────────────────────────────────
