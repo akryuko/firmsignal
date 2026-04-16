@@ -17,6 +17,18 @@ import { RiskFlag, Source } from "@/types"
 
 const RANGES: Record<string, number> = { "1Y": 12, "3Y": 36, "5Y": 60 }
 
+const TIER_LABEL: Record<number, string> = {
+  1: "primary",
+  2: "verified",
+  3: "secondary",
+}
+
+const TIER_COLOR: Record<number, string> = {
+  1: "bg-emerald-100 text-emerald-700",
+  2: "bg-blue-100 text-blue-700",
+  3: "bg-slate-100 text-slate-600",
+}
+
 const SEVERITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 }
 
 const REC_STYLES: Record<string, string> = {
@@ -253,6 +265,14 @@ function SourcesDetails({ sources }: { sources: Source[] }) {
                       {title}
                       <ExternalLink className="h-3 w-3 shrink-0" />
                     </a>
+                    {s.tier != null && (
+                      <span className={cn(
+                        "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium",
+                        TIER_COLOR[s.tier] ?? "bg-slate-100 text-slate-500",
+                      )}>
+                        {TIER_LABEL[s.tier] ?? "unknown"}
+                      </span>
+                    )}
                   </div>
                 )
               })}

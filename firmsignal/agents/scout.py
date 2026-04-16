@@ -8,6 +8,12 @@ from tavily import TavilyClient
 from firmsignal.models import ScoutOutput
 from firmsignal.state import FirmState
 from firmsignal.tools.cache import get_cached, set_cached
+from firmsignal.tools.source_quality import (
+    EXCLUDED_DOMAINS,
+    TRUSTED_NEWS_DOMAINS,
+    filter_results,
+    get_source_tier,
+)
 
 
 # ─── LLM setup ────────────────────────────────────────────────────────────────
@@ -27,7 +33,13 @@ def _get_llm():
 
 # ─── Search layer ─────────────────────────────────────────────────────────────
 
-def _search(client: TavilyClient, query: str, max_results: int = 5) -> list[dict]:
+def _search(
+    client: TavilyClient,
+    query: str,
+    max_results: int = 5,
+    include_domains: list[str] | None = None,
+    exclude_domains: list[str] | None = None,
+) -> list[dict]:
     """
     Runs a Tavily search, checking the Redis cache first.
     On cache miss: hits Tavily API, stores result, returns it.
@@ -40,12 +52,17 @@ def _search(client: TavilyClient, query: str, max_results: int = 5) -> list[dict
 
     print(f"    [tavily]    {query}")
     try:
-        response = client.search(
-            query=query,
-            search_depth="advanced",  # higher quality than "basic"
-            max_results=max_results,
-            include_answer=False,     # we want raw results, not Tavily's summary
-        )
+        kwargs: dict = {
+            "query": query,
+            "search_depth": "advanced",
+            "max_results": max_results,
+            "include_answer": False,
+        }
+        if include_domains:
+            kwargs["include_domains"] = include_domains
+        if exclude_domains:
+            kwargs["exclude_domains"] = exclude_domains
+        response = client.search(**kwargs)
         results = response.get("results", [])
         set_cached(query, results)
         return results
@@ -116,15 +133,25 @@ def scout_node(state: FirmState) -> dict:
 
         # Two targeted queries gives better coverage than one broad search.
         # Leadership changes are often underrepresented in general news results.
-        news_results = _search(
-            tavily,
-            query=f"{company} latest news {year}",
-            max_results=5,
+        news_results = filter_results(
+            _search(
+                tavily,
+                query=f"{company} latest news {year}",
+                max_results=5,
+                include_domains=TRUSTED_NEWS_DOMAINS,
+                exclude_domains=EXCLUDED_DOMAINS,
+            ),
+            min_tier=2,
         )
-        leadership_results = _search(
-            tavily,
-            query=f"{company} CEO leadership executive changes {year}",
-            max_results=3,
+        leadership_results = filter_results(
+            _search(
+                tavily,
+                query=f"{company} CEO leadership executive changes {year}",
+                max_results=3,
+                include_domains=TRUSTED_NEWS_DOMAINS,
+                exclude_domains=EXCLUDED_DOMAINS,
+            ),
+            min_tier=2,
         )
 
         all_results = news_results + leadership_results
@@ -154,6 +181,7 @@ def scout_node(state: FirmState) -> dict:
                 "title": r.get("title", ""),
                 "agent": "scout",
                 "retrieved_at": today,
+                "tier": get_source_tier(r["url"]),
             }
             for r in all_results
             if r.get("url")

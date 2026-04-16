@@ -1,4 +1,6 @@
-from pydantic import BaseModel, Field
+import re
+
+from pydantic import BaseModel, Field, field_validator
 
 
 # ─── Scout models ─────────────────────────────────────────────────────────────
@@ -126,6 +128,58 @@ class SkepticOutput(BaseModel):
     )
 
     sources_analyzed: int = Field(default=0)
+
+    @field_validator("positive_signals", mode="before")
+    @classmethod
+    def _coerce_positive_signals(cls, v: object) -> object:
+        """
+        Haiku sometimes returns a bare string (or XML-tagged string) instead
+        of a list when structured output falls back to XML extraction.
+        Strip tags and split into lines rather than crashing.
+        """
+        if not isinstance(v, str):
+            return v
+        cleaned = re.sub(r"<[^>]+>", "", v)
+        return [
+            line.strip().lstrip("•-*·").strip()
+            for line in cleaned.splitlines()
+            if line.strip()
+        ]
+
+    @field_validator("risk_flags", mode="before")
+    @classmethod
+    def _coerce_risk_flags(cls, v: object) -> object:
+        """
+        When Haiku emits XML instead of JSON for the risk_flags list, LangChain
+        hands us the raw XML string.  Try to recover the structured data from it
+        rather than silently dropping everything.
+        """
+        if isinstance(v, (list, type(None))):
+            return v
+        if not isinstance(v, str):
+            return []
+
+        # Attempt to reconstruct from XML parameter tags, e.g.:
+        #   <parameter name="category">Operations</parameter>
+        #   <parameter name="description">...</parameter>  ...
+        categories    = re.findall(r'<parameter name="category">(.*?)</parameter>',    v, re.DOTALL)
+        descriptions  = re.findall(r'<parameter name="description">(.*?)</parameter>',  v, re.DOTALL)
+        severities    = re.findall(r'<parameter name="severity">(.*?)</parameter>',     v, re.DOTALL)
+        source_urls   = re.findall(r'<parameter name="source_url">(.*?)</parameter>',   v, re.DOTALL)
+
+        if categories:
+            return [
+                {
+                    "category":   categories[i].strip(),
+                    "description": descriptions[i].strip() if i < len(descriptions) else "See sources.",
+                    "severity":   (severities[i].strip()   if i < len(severities)   else "medium"),
+                    "source_url": (source_urls[i].strip()  if i < len(source_urls)  else ""),
+                }
+                for i in range(len(categories))
+            ]
+
+        # No recoverable structure — return empty rather than crash
+        return []
 
 # ─── Synthesizer models ────────────────────────────────────────────────────────
 
