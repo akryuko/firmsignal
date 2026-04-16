@@ -6,7 +6,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from firmsignal.models import SynthesizerOutput
 from firmsignal.state import FirmState
-from firmsignal.tools.source_quality import get_source_tier
+from firmsignal.tools.source_quality import get_source_tier, is_valid_result
 
 
 # ─── System prompt ─────────────────────────────────────────────────────────────
@@ -40,23 +40,45 @@ WRITING RULES:
 - Incorporate any analyst notes from the human reviewer naturally into the analysis.
 - Omit sections where data is genuinely missing — do not pad.
 - No filler phrases: "it is worth noting", "it is important to consider", "in conclusion".
+- In Recent Developments: every event must include one sentence of analytical implication.
+  Not "Apple launched X at $Y" but "Apple launched X at $Y, undercutting competitors by ~20%
+  and signalling a deliberate shift toward volume over margin." Ask: what does this event mean
+  for the company's strategy, competitive position, or financial trajectory?
+
+ABOUT SECTION — write 3-4 sentences, no citations needed:
+1. What the company does — plain English, not SEC boilerplate
+2. Size and leadership — employees, HQ, founded year (if known), CEO name
+3. Business model — how they primarily make money (name the revenue segments)
+4. Strategic moment — one sentence on where they are right now (shift, inflection, challenge)
+Use actual numbers from the ABOUT DATA and FINANCIAL DATA blocks. Do not copy the raw
+description verbatim.
 
 OUTPUT FORMAT (use exactly these section headers):
 
 # {Company} — Intelligence Brief
 *{date} · {n} sources analysed · FirmSignal*
 
+## About
+
 ## Executive Summary
 
 ## Recent Developments
 
 ## Financial Overview
+(Open this section with the YFINANCE_ATTRIBUTION line from the FINANCIAL DATA block.
+Do NOT add [N] citations for figures from that block — the attribution line is sufficient.
+Only cite [N] for claims that match an entry in the NUMBERED SOURCES list.)
 
 ## Risk Assessment
 
 ## Signal Summary
-**Bull case:**
-**Bear case:**
+**Bull case:** (2-3 sentences, specific numbers and named competitors/markets — no generic phrases
+like "strong momentum" or "solid fundamentals". Explain the mechanism: why does this advantage
+translate into revenue, margin, or market share gain, and over what timeframe?)
+**Bear case:** (2-3 sentences, same standard — name the specific risk vector, quantify the
+exposure where possible, and state what would have to happen for the bear case to materialise.
+Fold in employee sentiment and public/investor sentiment from the RISK ANALYSIS block here
+if they support the bear case — do not create separate sections for them.)
 
 (Do NOT include a Sources section — citations are handled separately by the UI)"""
 
@@ -65,11 +87,16 @@ OUTPUT FORMAT (use exactly these section headers):
 
 def _validate_sources(sources: list[dict]) -> list[dict]:
     """
-    Drops blocked sources (tier == -1) before the Synthesizer sees them.
+    Drops blocked sources before the Synthesizer sees them:
+    - Domain tier == -1 (hard-blocked domains)
+    - Title matches a known challenge/error page (Cloudflare, WAF, 403, etc.)
     Unknown domains (tier == None) are kept — better to cite than to drop.
     """
     clean = []
     for s in sources:
+        if not is_valid_result(s):
+            print(f"[Synthesizer] Dropping challenge/error page: '{s.get('title')}' — {s.get('url')}")
+            continue
         tier = get_source_tier(s.get("url", ""))
         if tier == -1:
             print(f"[Synthesizer] Dropping blocked source: {s.get('url')}")
@@ -138,10 +165,29 @@ def _build_context(state: FirmState, sources: list[dict]) -> str:
 
     events = scout.get("key_events", [])
 
+    # ── About data ─────────────────────────────────────────────────────────────
+    about_parts = []
+    if acc.get("ceo"):
+        about_parts.append(f"  CEO:          {acc['ceo']}")
+    if acc.get("founded"):
+        about_parts.append(f"  Founded:      {acc['founded']}")
+    if acc.get("headquarters"):
+        about_parts.append(f"  HQ:           {acc['headquarters']}")
+    if acc.get("employee_count"):
+        about_parts.append(f"  Employees:    {acc['employee_count']:,}")
+    if acc.get("website"):
+        about_parts.append(f"  Website:      {acc['website']}")
+    if acc.get("sector"):
+        about_parts.append(f"  Sector:       {acc.get('sector')} / {acc.get('industry')}")
+    if acc.get("company_description"):
+        about_parts.append(f"  Description:  {acc['company_description']}")
+    about_block = "\n".join(about_parts) if about_parts else "  (no structured data available)"
+
     # ── Accountant ─────────────────────────────────────────────────────────────
     if acc.get("is_public"):
         employees = f"{acc['employee_count']:,}" if acc.get("employee_count") else "N/A"
         fin_block = f"""\
+  YFINANCE_ATTRIBUTION: *Financial data sourced from Yahoo Finance via yfinance as of {today}.*
   Ticker:        {acc.get('ticker')}
   Market Cap:    {acc.get('market_cap_formatted')} ({acc.get('currency')})
   Current Price: ${acc.get('current_price')}
@@ -180,6 +226,11 @@ TOTAL SOURCES: {len(sources)}
 
 NUMBERED SOURCES — use these [N] numbers for citations:
 {_format_sources(sources)}
+
+══════════════════════════════════════════════════════
+
+ABOUT DATA (use to write the ## About section):
+{about_block}
 
 ══════════════════════════════════════════════════════
 

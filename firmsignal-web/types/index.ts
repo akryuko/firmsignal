@@ -60,6 +60,11 @@ export interface AccountantOutput {
   target_price_high: number | null
   target_price_low: number | null
   financial_summary: string
+  company_description: string
+  ceo: string | null
+  founded: number | null
+  headquarters: string
+  website: string | null
 }
 
 export interface RiskFlag {

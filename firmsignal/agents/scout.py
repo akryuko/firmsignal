@@ -131,13 +131,16 @@ def scout_node(state: FirmState) -> dict:
     try:
         tavily = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
 
-        # Two targeted queries gives better coverage than one broad search.
-        # Leadership changes are often underrepresented in general news results.
+        # Three targeted queries for broad coverage:
+        # - News: recent headlines from quality outlets
+        # - Leadership: often underrepresented in general news results
+        # - Regulatory: SEC filings and press releases; min_tier=3 to accept all
+        #   known trusted domains since tier-1 sources (sec.gov, prnewswire) dominate here
         news_results = filter_results(
             _search(
                 tavily,
                 query=f"{company} latest news {year}",
-                max_results=5,
+                max_results=8,
                 include_domains=TRUSTED_NEWS_DOMAINS,
                 exclude_domains=EXCLUDED_DOMAINS,
             ),
@@ -147,14 +150,24 @@ def scout_node(state: FirmState) -> dict:
             _search(
                 tavily,
                 query=f"{company} CEO leadership executive changes {year}",
-                max_results=3,
+                max_results=5,
                 include_domains=TRUSTED_NEWS_DOMAINS,
                 exclude_domains=EXCLUDED_DOMAINS,
             ),
             min_tier=2,
         )
+        regulatory_results = filter_results(
+            _search(
+                tavily,
+                query=f"{company} SEC filing earnings regulatory {year}",
+                max_results=5,
+                include_domains=TRUSTED_NEWS_DOMAINS,
+                exclude_domains=EXCLUDED_DOMAINS,
+            ),
+            min_tier=3,
+        )
 
-        all_results = news_results + leadership_results
+        all_results = news_results + leadership_results + regulatory_results
 
         # Graceful fallback — no crash, just an informative error in state
         if not all_results:
@@ -191,7 +204,9 @@ def scout_node(state: FirmState) -> dict:
             f"[Scout] Done — "
             f"{len(output.news_items)} news items, "
             f"{len(output.leadership_changes)} leadership changes, "
-            f"{len(output.key_events)} key events"
+            f"{len(output.key_events)} key events · "
+            f"{len(new_sources)} sources "
+            f"(news:{len(news_results)} leadership:{len(leadership_results)} regulatory:{len(regulatory_results)})"
         )
 
         return {

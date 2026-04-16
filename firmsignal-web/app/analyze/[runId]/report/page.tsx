@@ -55,6 +55,16 @@ function toCamel(s: string) {
   return s.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())
 }
 
+// Remove the "# Company — Intelligence Brief" h1 and the "*date · N sources · FirmSignal*"
+// italic line that the Synthesizer prepends. The page renders its own header, so these
+// are redundant and would create duplicate titles if the Executive Summary regex fails.
+function stripBriefHeader(brief: string): string {
+  return brief
+    .replace(/^#\s+.+\r?\n/, "")           // # Title line
+    .replace(/^\*[^*\n]+\*\r?\n?/, "")     // *italic metadata* line
+    .trimStart()
+}
+
 function stripSources(brief: string): string {
   const cutoff = brief.search(/^---\s*\n### Sources/m)
   if (cutoff !== -1) return brief.slice(0, cutoff).trim()
@@ -62,12 +72,38 @@ function stripSources(brief: string): string {
   return cutoff2 === -1 ? brief : brief.slice(0, cutoff2).trim()
 }
 
+function extractSection(brief: string, header: string): { content: string; rest: string } {
+  const re = new RegExp(`^##\\s+${header}\\s*\\r?\\n`, "im")
+  const headerMatch = brief.match(re)
+  if (!headerMatch || headerMatch.index == null) return { content: "", rest: brief }
+
+  const contentStart = headerMatch.index + headerMatch[0].length
+  const nextMatch = brief.slice(contentStart).match(/^##\s+/m)
+  if (!nextMatch || nextMatch.index == null) {
+    return { content: brief.slice(contentStart).trim(), rest: "" }
+  }
+  return {
+    content: brief.slice(contentStart, contentStart + nextMatch.index).trim(),
+    rest:    brief.slice(contentStart + nextMatch.index).trim(),
+  }
+}
+
 function extractKeyInsight(brief: string): { insight: string; rest: string } {
-  const idx = brief.indexOf("## Recent Developments")
-  if (idx === -1) return { insight: "", rest: brief }
-  const raw     = brief.slice(0, idx).trim()
-  const insight = raw.replace(/^##\s+Executive Summary\s*\n+/i, "").trim()
-  return { insight, rest: brief.slice(idx).trim() }
+  // Find ## Executive Summary (case-insensitive, multiline)
+  const headerMatch = brief.match(/^##\s+Executive Summary\s*\r?\n/im)
+  if (!headerMatch || headerMatch.index == null) return { insight: "", rest: brief }
+
+  const contentStart = headerMatch.index + headerMatch[0].length
+
+  // Find the next ## section after the executive summary
+  const nextMatch = brief.slice(contentStart).match(/^##\s+/m)
+  if (!nextMatch || nextMatch.index == null) {
+    return { insight: brief.slice(contentStart).trim(), rest: "" }
+  }
+
+  const insight = brief.slice(contentStart, contentStart + nextMatch.index).trim()
+  const rest    = brief.slice(contentStart + nextMatch.index).trim()
+  return { insight, rest }
 }
 
 function fmtChange(val: number | null | undefined): React.ReactNode {
@@ -147,10 +183,10 @@ function RiskTable({ flags }: { flags: RiskFlag[] }) {
 
   return (
     <div className="overflow-hidden rounded-xl border">
-      <div className="grid grid-cols-[88px_1fr] gap-3 border-b bg-slate-50 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-slate-400 sm:grid-cols-[88px_1fr_72px]">
+      <div className="grid grid-cols-[88px_1fr] gap-3 border-b bg-slate-50 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-slate-400 sm:grid-cols-[88px_1fr_88px]">
         <span>Severity</span>
         <span>Risk</span>
-        <span className="hidden sm:block">Source</span>
+        <span className="hidden sm:block">Status</span>
       </div>
 
       {sorted.map((flag, i) => (
@@ -182,15 +218,17 @@ function RiskTable({ flags }: { flags: RiskFlag[] }) {
                 {expanded.has(i) ? "show less" : "show more"}
               </button>
             )}
-            {flag.source_url && (
+            {flag.source_url ? (
               <a
                 href={flag.source_url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-1 inline-flex items-center gap-1 text-xs text-emerald-600 hover:underline sm:hidden"
               >
-                Source <ExternalLink className="h-3 w-3" />
+                Confirmed <ExternalLink className="h-3 w-3" />
               </a>
+            ) : (
+              <span className="mt-1 inline-flex text-xs text-amber-600 sm:hidden">Reported</span>
             )}
           </div>
 
@@ -202,10 +240,10 @@ function RiskTable({ flags }: { flags: RiskFlag[] }) {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-xs text-emerald-600 hover:underline"
               >
-                Link <ExternalLink className="h-3 w-3" />
+                Confirmed <ExternalLink className="h-3 w-3" />
               </a>
             ) : (
-              <span className="text-xs text-slate-300">—</span>
+              <span className="text-xs text-amber-600">Reported</span>
             )}
           </div>
         </div>
@@ -304,8 +342,12 @@ export default function ReportPage() {
   const skep   = outputs.skeptic
   const sliced = priceHistory.slice(-RANGES[range])
 
-  const { insight, rest } = finalBrief
-    ? extractKeyInsight(stripSources(finalBrief))
+  const stripped = finalBrief ? stripSources(stripBriefHeader(finalBrief)) : ""
+  const { content: aboutText, rest: afterAbout } = stripped
+    ? extractSection(stripped, "About")
+    : { content: "", rest: stripped }
+  const { insight, rest } = afterAbout
+    ? extractKeyInsight(afterAbout)
     : { insight: "", rest: "" }
 
   const upside =
@@ -382,10 +424,6 @@ export default function ReportPage() {
             )}
           </div>
 
-          {correctionNote && (
-            <p className="mt-1 text-sm text-amber-700">🔄 {correctionNote}</p>
-          )}
-
           <p className="mt-2 text-xs text-slate-400">
             Generated {today}
             {finalSources.length > 0 && ` · ${finalSources.length} sources`}
@@ -407,35 +445,29 @@ export default function ReportPage() {
 
       <Separator className="mb-8" />
 
-      {/* ── Chart + Stat Grid (two-column) ──────────────────────────────────── */}
+      {/* ── About ───────────────────────────────────────────────────────────── */}
+      {(aboutText || acc?.company_description) && (
+        <>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-400">
+            About
+          </p>
+          {aboutText ? (
+            <div className="mb-8">
+              <CitedBrief brief={aboutText} sources={finalSources} />
+            </div>
+          ) : (
+            <p className="mb-8 text-sm leading-relaxed text-slate-600">
+              {acc!.company_description}
+            </p>
+          )}
+          <Separator className="mb-8" />
+        </>
+      )}
+
+      {/* ── Stat Grid + Chart (two-column) ──────────────────────────────────── */}
       {acc && acc.is_public && (
         <>
           <div className="mb-8 flex flex-col gap-5 lg:flex-row">
-
-            {/* Chart — 60% */}
-            {sliced.length > 0 && ticker && (
-              <div className="w-full rounded-xl border bg-white p-5 lg:w-[60%]">
-                <div className="mb-4 flex gap-2 print:hidden">
-                  {Object.keys(RANGES).map((r) => (
-                    <button
-                      key={r}
-                      onClick={() => setRange(r)}
-                      className={cn(
-                        "cursor-pointer rounded-lg px-4 py-1.5 text-sm font-medium",
-                        r === range
-                          ? "bg-emerald-600 text-white"
-                          : "bg-slate-100 text-slate-600 hover:bg-slate-200",
-                      )}
-                    >
-                      {r}
-                    </button>
-                  ))}
-                </div>
-                <div className="h-[180px] sm:h-[240px]">
-                  <StockChart data={sliced} ticker={ticker} />
-                </div>
-              </div>
-            )}
 
             {/* Stat Grid — 40% */}
             <div className="w-full divide-y divide-slate-100 overflow-hidden rounded-xl border bg-white lg:w-[40%]">
@@ -484,16 +516,56 @@ export default function ReportPage() {
                   </p>
                 </div>
                 <div className="px-4 py-4">
-                  <p className="text-xs text-slate-400">1Y / 5Y Return</p>
-                  <p className="mt-1 flex items-center gap-1.5 text-base font-semibold">
+                  <p className="text-xs text-slate-400">Debt / Equity</p>
+                  <p className="mt-1 text-base font-semibold text-slate-800">
+                    {acc.debt_to_equity != null ? acc.debt_to_equity : "N/A"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Row 4 */}
+              <div className="grid grid-cols-2 divide-x divide-slate-100">
+                <div className="px-4 py-4">
+                  <p className="text-xs text-slate-400">1Y Return</p>
+                  <p className="mt-1 text-base font-semibold">
                     {fmtChange(acc.price_change_1y)}
-                    <span className="text-slate-300">/</span>
+                  </p>
+                </div>
+                <div className="px-4 py-4">
+                  <p className="text-xs text-slate-400">5Y Return</p>
+                  <p className="mt-1 text-base font-semibold">
                     {fmtChange(acc.price_change_5y)}
                   </p>
                 </div>
               </div>
 
             </div>
+
+            {/* Chart — 60% */}
+            {sliced.length > 0 && ticker && (
+              <div className="w-full rounded-xl border bg-white p-5 lg:w-[60%]">
+                <div className="mb-4 flex gap-2 print:hidden">
+                  {Object.keys(RANGES).map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => setRange(r)}
+                      className={cn(
+                        "cursor-pointer rounded-lg px-4 py-1.5 text-sm font-medium",
+                        r === range
+                          ? "bg-emerald-600 text-white"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200",
+                      )}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+                <div className="h-[180px] sm:h-[240px]">
+                  <StockChart data={sliced} ticker={ticker} />
+                </div>
+              </div>
+            )}
+
           </div>
 
           <Separator className="mb-8" />
@@ -604,6 +676,7 @@ export default function ReportPage() {
           <div className="mb-8">
             <RiskTable flags={sortedFlags} />
           </div>
+          <Separator className="mb-8" />
         </>
       )}
 
@@ -620,34 +693,6 @@ export default function ReportPage() {
                 <p className="text-sm text-slate-700">{sig}</p>
               </div>
             ))}
-          </div>
-          <Separator className="mb-8" />
-        </>
-      )}
-
-      {/* ── Market Opinions ─────────────────────────────────────────────────── */}
-      {(skep?.public_sentiment || skep?.employee_sentiment) && (
-        <>
-          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-400">
-            Market Opinions
-          </p>
-          <div className="mb-8 grid gap-4 md:grid-cols-2">
-            {skep?.public_sentiment && (
-              <div className="rounded-xl border bg-white p-5">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-slate-400">
-                  Investors &amp; Public
-                </p>
-                <p className="text-sm leading-relaxed text-slate-700">{skep.public_sentiment}</p>
-              </div>
-            )}
-            {skep?.employee_sentiment && (
-              <div className="rounded-xl border bg-white p-5">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-slate-400">
-                  Employee Sentiment
-                </p>
-                <p className="text-sm leading-relaxed text-slate-700">{skep.employee_sentiment}</p>
-              </div>
-            )}
           </div>
           <Separator className="mb-8" />
         </>

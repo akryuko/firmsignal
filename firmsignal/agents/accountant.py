@@ -1,4 +1,5 @@
 import os
+import re
 from datetime import datetime
 
 import pandas as pd
@@ -102,6 +103,24 @@ def _pull_data(ticker_str: str) -> tuple[dict, list[PricePoint]] | None:
 
     gross_margins = info.get("grossMargins")
 
+    # CEO — first officer whose title contains "chief executive"
+    officers = info.get("companyOfficers", [])
+    ceo = next(
+        (o.get("name") for o in officers
+         if "chief executive" in o.get("title", "").lower()),
+        None,
+    )
+
+    # HQ — city + country, strip stray commas/spaces if either is missing
+    city    = info.get("city", "")
+    country = info.get("country", "")
+    headquarters = ", ".join(part for part in [city, country] if part)
+
+    # Raw business description trimmed to 3 sentences (Synthesizer rewrites it)
+    raw_desc  = info.get("longBusinessSummary", "")
+    sentences = re.split(r"(?<=[.!?])\s+", raw_desc.strip())
+    description = " ".join(sentences[:3]) if sentences else ""
+
     fundamentals = {
         "market_cap":       info.get("marketCap"),
         "pe_ratio":         info.get("trailingPE"),
@@ -120,6 +139,11 @@ def _pull_data(ticker_str: str) -> tuple[dict, list[PricePoint]] | None:
         "target_price_mean":      info.get("targetMeanPrice"),
         "target_price_high":      info.get("targetHighPrice"),
         "target_price_low":       info.get("targetLowPrice"),
+        "company_description":    description,
+        "ceo":                    ceo,
+        "founded":                info.get("founded"),
+        "headquarters":           headquarters,
+        "website":                info.get("website"),
     }
 
     return fundamentals, price_history
@@ -224,6 +248,11 @@ def accountant_node(state: FirmState) -> dict:
             is_public=True,
             sector=f["sector"],
             industry=f["industry"],
+            company_description=f.get("company_description", ""),
+            ceo=f.get("ceo"),
+            founded=f.get("founded"),
+            headquarters=f.get("headquarters", ""),
+            website=f.get("website"),
             market_cap=f["market_cap"],
             market_cap_formatted=_format_number(f["market_cap"], prefix="$"),
             pe_ratio=round(f["pe_ratio"], 1) if f["pe_ratio"] else None,

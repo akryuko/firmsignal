@@ -1,3 +1,5 @@
+import html
+import re
 from urllib.parse import urlparse
 
 
@@ -118,6 +120,26 @@ BLOCKED_DOMAINS: set[str] = {
 }
 
 
+# ─── Title blacklist ──────────────────────────────────────────────────────────
+
+# Titles returned by Cloudflare challenges, WAFs, and error pages.
+# Tavily sometimes fetches these instead of actual content.
+BLOCKED_TITLES: list[str] = [
+    "just a moment",
+    "access denied",
+    "403 forbidden",
+    "page not found",
+    "robot check",
+    "are you a human",
+]
+
+
+def is_valid_result(result: dict) -> bool:
+    """Returns False if the result title matches a known challenge/error page."""
+    title = result.get("title", "").lower()
+    return not any(blocked in title for blocked in BLOCKED_TITLES)
+
+
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def _get_domain(url: str) -> str:
@@ -145,6 +167,25 @@ def get_source_tier(url: str) -> int | None:
     return None
 
 
+def sanitize_text(text: str) -> str:
+    """
+    Sanitizes text coming back from LLM or web sources before it gets stored
+    or rendered in the UI.
+
+    - Escapes HTML to prevent XSS if the brief is ever rendered as raw HTML
+    - Removes null bytes that can corrupt string processing
+    - Normalizes line endings
+    - Collapses excessive blank lines
+    """
+    if not text:
+        return ""
+    text = html.escape(text, quote=False)
+    text = text.replace("\x00", "")
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
 def filter_results(
     results: list[dict],
     min_tier: int = 3,
@@ -166,6 +207,10 @@ def filter_results(
     unknown: list[dict] = []
 
     for r in results:
+        if not is_valid_result(r):
+            blocked.append(r.get("url", r.get("title", "unknown")))
+            continue
+
         url  = r.get("url", "")
         tier = get_source_tier(url)
 
