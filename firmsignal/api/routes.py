@@ -2,9 +2,10 @@ import asyncio
 import json
 import uuid
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from fastapi.responses import Response, StreamingResponse
 
+from firmsignal.api.limiter import limiter
 from firmsignal.api.models import (
     AnalyzeRequest,
     AnalyzeResponse,
@@ -24,7 +25,9 @@ router = APIRouter(prefix="/api")
 # ── POST /api/analyze ──────────────────────────────────────────────────────────
 
 @router.post("/analyze", response_model=AnalyzeResponse)
-async def analyze(req: AnalyzeRequest, background: BackgroundTasks):
+@limiter.limit("50/hour")
+@limiter.limit("10/minute")
+async def analyze(request: Request, req: AnalyzeRequest, background: BackgroundTasks):
     """
     Kicks off a FirmSignal run.
     Returns immediately with run_id — the frontend uses this to open
@@ -44,7 +47,8 @@ async def analyze(req: AnalyzeRequest, background: BackgroundTasks):
 # ── GET /api/stream/{run_id} ───────────────────────────────────────────────────
 
 @router.get("/stream/{run_id}")
-async def stream(run_id: str):
+@limiter.limit("30/minute")
+async def stream(request: Request, run_id: str):
     """
     Server-Sent Events stream for a run.
 
@@ -95,7 +99,8 @@ async def stream(run_id: str):
 # ── POST /api/resume/{run_id} ──────────────────────────────────────────────────
 
 @router.post("/resume/{run_id}", response_model=ResumeResponse)
-async def resume(run_id: str, req: ResumeRequest):
+@limiter.limit("20/minute")
+async def resume(request: Request, run_id: str, req: ResumeRequest):
     """
     Injects the human HITL decision and resumes the graph.
 
@@ -139,7 +144,8 @@ async def generate_pdf(req: PdfRequest):
 # ── GET /api/status/{run_id} ───────────────────────────────────────────────────
 
 @router.get("/status/{run_id}", response_model=RunStatusResponse)
-async def status(run_id: str):
+@limiter.limit("60/minute")
+async def status(request: Request, run_id: str):
     """
     Lightweight polling endpoint — useful for reconnecting after
     a lost SSE connection without re-running the pipeline.
