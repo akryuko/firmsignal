@@ -48,6 +48,22 @@ def normalizer_node(state: FirmState) -> dict:
     Handles: misspellings, ticker symbols, abbreviations, casing.
     """
     raw_input = state["company_name"]
+
+    # Guard — should already be clean from API layer, but agents can be
+    # called directly in tests or invoked without going through the routes.
+    if not raw_input or not raw_input.strip():
+        return {
+            "company_name":     "Unknown",
+            "ticker_hint":      None,
+            "is_private_hint":  False,
+            "input_correction": None,
+            "error": "Empty company name reached normalizer — check API validation layer",
+        }
+
+    if len(raw_input) > 100:
+        raw_input = raw_input[:100]
+        print(f"[Normalizer] Input truncated to 100 chars")
+
     print(f"\n[Normalizer] Resolving '{raw_input}'...")
 
     try:

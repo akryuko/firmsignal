@@ -1,6 +1,6 @@
 import re
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 # ─── Scout models ─────────────────────────────────────────────────────────────
@@ -118,11 +118,19 @@ class SkepticOutput(BaseModel):
 
     risk_flags: list[RiskFlag] = Field(
         default_factory=list,
-        description="Up to 5 most significant risk flags. Prioritise patterns over single incidents."
+        description=(
+            "REQUIRED. 3–5 risk flags extracted from the sources. "
+            "An empty list is never acceptable — always return at least 1 flag, "
+            "even if severity is low. Prioritise patterns over single incidents."
+        ),
     )
     positive_signals: list[str] = Field(
         default_factory=list,
-        description="Up to 3 genuinely notable positives. Exclude obvious PR talking points."
+        description=(
+            "REQUIRED. 1–3 short phrases describing genuine competitive advantages or "
+            "financial strengths visible in the sources. "
+            "An empty list is never acceptable — always return at least 1 signal."
+        ),
     )
 
     employee_sentiment: str = Field(
@@ -188,6 +196,30 @@ class SkepticOutput(BaseModel):
 
         # No recoverable structure — return empty rather than crash
         return []
+
+    @model_validator(mode="after")
+    def _ensure_non_empty(self) -> "SkepticOutput":
+        """
+        Safety net: if the LLM still returns empty lists despite the system prompt
+        and field description constraints, insert a placeholder rather than silently
+        surfacing 0 flags / 0 signals in the UI.
+        """
+        if not self.risk_flags:
+            self.risk_flags = [RiskFlag(
+                category="Operations",
+                description=(
+                    "Insufficient source data to identify specific risk flags. "
+                    "Manual review recommended."
+                ),
+                severity="low",
+                source_url="",
+            )]
+        if not self.positive_signals:
+            self.positive_signals = [
+                "No specific positive signals identified from available sources."
+            ]
+        return self
+
 
 # ─── Synthesizer models ────────────────────────────────────────────────────────
 

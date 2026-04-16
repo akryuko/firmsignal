@@ -16,6 +16,7 @@ from firmsignal.api.models import (
 from firmsignal.api.pdf import build_pdf
 from firmsignal.api.runner import run_pipeline
 from firmsignal.api.store import RunStatus, create_run, get_run
+from firmsignal.api.validation import validate_company_name
 
 router = APIRouter(prefix="/api")
 
@@ -29,11 +30,10 @@ async def analyze(req: AnalyzeRequest, background: BackgroundTasks):
     Returns immediately with run_id — the frontend uses this to open
     the SSE stream and later to call /resume.
     """
-    if not req.company.strip():
-        raise HTTPException(status_code=422, detail="Company name cannot be empty")
+    company = validate_company_name(req.company)
 
     run_id = str(uuid.uuid4())
-    record = create_run(run_id, req.company.strip())
+    record = create_run(run_id, company)
 
     # Start the pipeline as a background task so this endpoint returns instantly
     background.add_task(run_pipeline, record)

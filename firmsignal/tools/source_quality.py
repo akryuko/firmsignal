@@ -1,3 +1,5 @@
+import html
+import re
 from urllib.parse import urlparse
 
 
@@ -163,6 +165,25 @@ def get_source_tier(url: str) -> int | None:
         if domain == trusted_domain or domain.endswith(f".{trusted_domain}"):
             return tier
     return None
+
+
+def sanitize_text(text: str) -> str:
+    """
+    Sanitizes text coming back from LLM or web sources before it gets stored
+    or rendered in the UI.
+
+    - Escapes HTML to prevent XSS if the brief is ever rendered as raw HTML
+    - Removes null bytes that can corrupt string processing
+    - Normalizes line endings
+    - Collapses excessive blank lines
+    """
+    if not text:
+        return ""
+    text = html.escape(text, quote=False)
+    text = text.replace("\x00", "")
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
 
 
 def filter_results(

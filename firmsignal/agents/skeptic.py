@@ -118,6 +118,11 @@ _SYSTEM = """\
 You are a critical research analyst. Your job is to identify risks and red flags.
 Be genuinely skeptical — your role is to find real problems, not summarise PR material.
 
+HARD RULES (never violate):
+- risk_flags MUST contain at least 1 item. An empty list is invalid.
+- positive_signals MUST contain at least 1 item. An empty list is invalid.
+- If evidence is mixed or scarce, add a low-severity flag and a cautious positive — do not return empty arrays.
+
 RISK FLAG RULES:
 - Produce 3-5 risk_flags. If the sources contain any lawsuits, regulatory actions, layoffs,
   leadership instability, competitive threats, or negative employee/customer patterns — flag them.
@@ -264,6 +269,11 @@ def skeptic_node(state: FirmState) -> dict:
             SystemMessage(content=_SYSTEM),
             HumanMessage(content=_build_prompt(company, reddit_posts, web_results)),
         ])
+
+        print(
+            f"    [skeptic raw] flags={len(output.risk_flags)} "
+            f"signals={len(output.positive_signals)}"
+        )
 
         # Hard clamp — Pydantic validates type but not range
         output.sentiment_score = max(-1.0, min(1.0, output.sentiment_score))

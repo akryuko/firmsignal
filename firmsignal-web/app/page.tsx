@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { startAnalysis } from "@/lib/api"
 import { useRunStore } from "@/store/run"
+import { validateCompanyInput, getLiveError } from "@/lib/validation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Loader2, ArrowRight, Building2 } from "lucide-react"
@@ -29,8 +30,17 @@ export default function HomePage() {
   const router   = useRouter()
   const startRun = useRunStore((s) => s.startRun)
 
+  const liveError = getLiveError(company)
+
   async function handleSubmit() {
-    if (!company.trim() || loading) return
+    if (loading) return
+
+    const validation = validateCompanyInput(company)
+    if (!validation.valid) {
+      setError(validation.error)
+      return
+    }
+
     setLoading(true)
     setError(null)
     try {
@@ -73,16 +83,16 @@ export default function HomePage() {
           <form onSubmit={(e) => { e.preventDefault(); handleSubmit() }} className="flex flex-col gap-3 sm:flex-row">
             <Input
               value={company}
-              onChange={(e) => setCompany(e.target.value)}
+              onChange={(e) => { setCompany(e.target.value); if (error) setError(null) }}
               onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
               placeholder="e.g. Nvidia, Boeing, AAPL, Stripe..."
-              className="h-11 flex-1 rounded-lg"
+              className={`h-11 flex-1 rounded-lg ${liveError || error ? "border-red-400 focus-visible:ring-red-400" : ""}`}
               disabled={loading}
               autoFocus
             />
             <Button
               type="submit"
-              disabled={loading || !company.trim()}
+              disabled={loading || !company.trim() || !!liveError}
               className="h-11 min-w-[110px] rounded-lg bg-emerald-600 px-5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
@@ -96,18 +106,14 @@ export default function HomePage() {
             </Button>
           </form>
 
-          <p className="mt-2.5 text-xs text-slate-400">
-            Supports misspellings, ticker symbols, and informal names
-          </p>
-
-          {/* Error */}
-          {error && (
-            <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {error}
-              <p className="mt-1 text-xs text-red-500">
-                Make sure the backend is running on port 8000
-              </p>
-            </div>
+          {liveError ? (
+            <p className="mt-1.5 text-sm text-red-600">{liveError}</p>
+          ) : error ? (
+            <p className="mt-1.5 text-sm text-red-600">{error}</p>
+          ) : (
+            <p className="mt-2.5 text-xs text-slate-400">
+              Supports misspellings, ticker symbols, and informal names
+            </p>
           )}
         </div>
 
