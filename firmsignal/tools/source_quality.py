@@ -118,6 +118,26 @@ BLOCKED_DOMAINS: set[str] = {
 }
 
 
+# ─── Title blacklist ──────────────────────────────────────────────────────────
+
+# Titles returned by Cloudflare challenges, WAFs, and error pages.
+# Tavily sometimes fetches these instead of actual content.
+BLOCKED_TITLES: list[str] = [
+    "just a moment",
+    "access denied",
+    "403 forbidden",
+    "page not found",
+    "robot check",
+    "are you a human",
+]
+
+
+def is_valid_result(result: dict) -> bool:
+    """Returns False if the result title matches a known challenge/error page."""
+    title = result.get("title", "").lower()
+    return not any(blocked in title for blocked in BLOCKED_TITLES)
+
+
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def _get_domain(url: str) -> str:
@@ -166,6 +186,10 @@ def filter_results(
     unknown: list[dict] = []
 
     for r in results:
+        if not is_valid_result(r):
+            blocked.append(r.get("url", r.get("title", "unknown")))
+            continue
+
         url  = r.get("url", "")
         tier = get_source_tier(url)
 

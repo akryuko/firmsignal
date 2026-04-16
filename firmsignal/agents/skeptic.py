@@ -118,35 +118,27 @@ _SYSTEM = """\
 You are a critical research analyst. Your job is to identify risks and red flags.
 Be genuinely skeptical — your role is to find real problems, not summarise PR material.
 
-SOURCE QUALITY RULES — MANDATORY:
-- Weight evidence by source credibility. Reuters, Bloomberg, SEC filings, and official
-  company communications carry 10x more weight than blog posts or anonymous reviews.
-- A risk flag requires at least ONE credible primary or secondary source.
-  A single Glassdoor review is noise. Patterns across 10+ reviews = signal.
-- If the only source for a claim is a personal blog, forum post, or unverified social
-  media — do not include it as a risk flag.
-- For legal/regulatory risks: only cite if from the regulator itself, a major news
-  outlet, or official court records.
-- For financial risks: only cite if from SEC filings, earnings calls, or Tier 1
-  financial press (Bloomberg, Reuters, FT, WSJ).
-- Distinguish between: confirmed facts, credible reports, and rumors. Label each
-  risk flag's evidence type in your description using these prefixes:
-    "Confirmed:" — from official source or major outlet
-    "Reported:"  — from credible secondary source
-    "Alleged:"   — from lawsuit or regulatory filing not yet resolved
-    "Rumored:"   — multiple credible sources but unconfirmed
-
-ANALYSIS RULES:
-- Prioritise patterns over single incidents. One complaint = noise. Five = signal.
-- Distinguish company-generated content from genuine employee or investor opinions.
-- risk_flags: only substantive risks, not trivial criticism. Max 5.
+RISK FLAG RULES:
+- Produce 3-5 risk_flags. If the sources contain any lawsuits, regulatory actions, layoffs,
+  leadership instability, competitive threats, or negative employee/customer patterns — flag them.
 - severity "high": could materially harm the company, employees, or investors.
 - severity "medium": real concern worth monitoring.
 - severity "low": minor issue, worth noting.
-- positive_signals: only genuinely notable positives. Exclude obvious PR talking points. Max 3.
-- sentiment_score: based strictly on the evidence provided. Do not anchor to the company's reputation.
-- If data is sparse, say so clearly in the summary. Do not pad with speculation.
-- source_url: must appear verbatim in the provided sources. Never invent URLs."""
+- For each flag, set source_url to the best matching URL from the sources provided.
+  Use the closest match. Do NOT leave flags empty because you are uncertain about the URL.
+- Label each flag's evidence in the description:
+    "Confirmed:" — from official source or major outlet
+    "Reported:"  — from credible secondary source
+    "Alleged:"   — from lawsuit or regulatory filing not yet resolved
+
+POSITIVE SIGNALS RULES:
+- Produce 1-3 positive_signals: genuine competitive advantages, product momentum, or financial
+  strength visible in the sources. Short phrases only. Include at least one if any exists.
+
+GENERAL RULES:
+- sentiment_score: based strictly on the evidence provided, from -1.0 to +1.0.
+- Weight Reuters, Bloomberg, SEC filings 3x over blogs or unverified posts.
+- If data is sparse, say so in the summary — do not pad with speculation."""
 
 
 def _build_prompt(company: str, reddit_posts: list[dict], web_results: list[dict]) -> str:
@@ -169,7 +161,7 @@ def _build_prompt(company: str, reddit_posts: list[dict], web_results: list[dict
             sections.append(
                 f"Title:   {r.get('title', 'N/A')}\n"
                 f"URL:     {r.get('url', 'N/A')}\n"
-                f"Content: {r.get('content', 'N/A')[:500]}"
+                f"Content: {r.get('content', 'N/A')[:1000]}"
             )
 
     body = "\n\n".join(sections) if sections else "No sources were found for this company."
@@ -212,10 +204,13 @@ def skeptic_node(state: FirmState) -> dict:
         # Step 2: Three Tavily queries targeting the three main risk areas
         tavily = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
 
-        glassdoor = filter_results(
+        # Employee culture: query avoids direct Glassdoor page URLs (Cloudflare-protected)
+        # by searching broadly — news coverage of reviews is still captured via
+        # comparably.com, layoffs.fyi, and news outlets in TRUSTED_SENTIMENT_DOMAINS.
+        culture = filter_results(
             _search(
                 tavily,
-                f"{company} Glassdoor employee reviews culture {year}",
+                f"{company} employee culture workplace satisfaction reviews {year}",
                 include_domains=TRUSTED_SENTIMENT_DOMAINS,
                 exclude_domains=EXCLUDED_DOMAINS,
             ),
@@ -239,11 +234,24 @@ def skeptic_node(state: FirmState) -> dict:
             ),
             min_tier=2,
         )
+        regulatory = filter_results(
+            _search(
+                tavily,
+                f"{company} antitrust regulatory investigation fine export control {year}",
+                include_domains=TRUSTED_NEWS_DOMAINS,
+                exclude_domains=EXCLUDED_DOMAINS,
+            ),
+            min_tier=2,
+        )
 
-        web_results = glassdoor + controversy + layoffs
+        web_results = culture + controversy + layoffs + regulatory
         total = len(reddit_posts) + len(web_results)
 
-        print(f"[Skeptic] Analysing {total} sources ({len(reddit_posts)} Reddit · {len(web_results)} web)")
+        print(
+            f"[Skeptic] Analysing {total} sources ({len(reddit_posts)} Reddit · {len(web_results)} web) "
+            f"(culture:{len(culture)} controversy:{len(controversy)} "
+            f"layoffs:{len(layoffs)} regulatory:{len(regulatory)})"
+        )
 
         # Step 3: Structured extraction — Claude Haiku with skeptical system prompt
         llm = ChatAnthropic(

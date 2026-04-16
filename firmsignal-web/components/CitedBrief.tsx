@@ -25,7 +25,7 @@ function buildIndex(sources: Source[]): Map<number, string> {
 function makeClickable(brief: string, index: Map<number, string>): string {
   return brief.replace(/\[(\d+)\]/g, (match, num) => {
     const url = index.get(parseInt(num))
-    return url ? `[[${num}]](${url})` : match
+    return url ? `[[${num}]](${url}) ` : match
   })
 }
 
@@ -88,7 +88,7 @@ export function CitedBrief({ brief, sources }: Props) {
                   rel="noopener noreferrer"
                   className="relative -top-0.5 ml-0.5 text-[10px] font-medium text-emerald-600 hover:underline"
                 >
-                  {num}
+                  [{num}]
                 </a>
               )
             }

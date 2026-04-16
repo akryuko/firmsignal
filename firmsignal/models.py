@@ -77,6 +77,13 @@ class AccountantOutput(BaseModel):
     target_price_high: float | None = None
     target_price_low: float | None = None
 
+    # Company profile (for Synthesizer About section)
+    ceo: str | None = None
+    founded: int | None = None
+    headquarters: str = ""
+    website: str | None = None
+    company_description: str = ""   # raw longBusinessSummary trimmed to 3 sentences
+
     financial_summary: str = ""
 
 
@@ -94,7 +101,8 @@ class RiskFlag(BaseModel):
         description="One of: low, medium, high"
     )
     source_url: str = Field(
-        description="URL of the source that surfaced this risk — must appear verbatim in the provided sources"
+        default="",
+        description="Best matching URL from the provided sources. Use the closest match — leave empty only if no source is even tangentially relevant."
     )
 
 
