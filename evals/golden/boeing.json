@@ -1,0 +1,43 @@
+{
+  "company": "Boeing",
+  "ticker": "BA",
+  "is_public": true,
+  "ceo": "Kelly Ortberg",
+  "sector": "Industrials",
+  "industry": "Aerospace & Defense",
+  "last_verified": "2026-04-17",
+
+  "stable_facts": [
+    "Kelly Ortberg is the CEO and President of Boeing",
+    "Boeing is headquartered in Arlington Virginia",
+    "Boeing trades on NYSE under ticker BA",
+    "Boeing manufactures commercial aircraft and defense systems"
+  ],
+
+  "expected_patterns": [
+    "mentions Boeing 737 MAX crashes or criminal fraud charges",
+    "mentions significant workforce reduction or layoffs",
+    "mentions legal liability or DOJ prosecution",
+    "mentions production recovery or delivery targets",
+    "mentions backlog or order book as positive signal",
+    "references Reuters Bloomberg SEC filing or major outlet as source"
+  ],
+
+  "forbidden_content": [
+    "Dave Calhoun is CEO",
+    "Dennis Muilenburg is CEO",
+    "Boeing has fully resolved all legal issues",
+    "Boeing has no safety concerns"
+  ],
+
+  "quality_thresholds": {
+    "min_faithfulness": 0.80,
+    "min_relevancy": 0.75,
+    "min_citation_coverage": 0.65,
+    "min_word_count": 350,
+    "min_citations": 4
+  },
+
+  "sentiment_range": [-0.9, -0.2],
+  "notes": "Boeing has severe ongoing legal and operational risks. Negative sentiment strongly expected. DOJ guilty plea is confirmed public record. Ortberg joined August 8 2024. Record backlog is a genuine positive signal."
+}

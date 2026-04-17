@@ -1,0 +1,42 @@
+{
+  "company": "Stripe",
+  "ticker": null,
+  "is_public": false,
+  "ceo": "Patrick Collison",
+  "sector": "Financial Technology",
+  "industry": "Payments Infrastructure",
+  "last_verified": "2026-04-17",
+
+  "stable_facts": [
+    "Patrick Collison is the CEO and co-founder of Stripe",
+    "John Collison is the co-founder and President of Stripe",
+    "Stripe is a private company with no publicly traded stock",
+    "Stripe provides payment processing infrastructure for businesses"
+  ],
+
+  "expected_patterns": [
+    "mentions Stripe as a private company",
+    "mentions Stripe valuation from most recent funding or secondary transaction",
+    "mentions payments or financial infrastructure as core business",
+    "mentions IPO speculation or readiness as a topic",
+    "mentions competition from Adyen PayPal Braintree or similar"
+  ],
+
+  "forbidden_content": [
+    "Stripe is publicly traded",
+    "Stripe trades on NYSE or NASDAQ",
+    "Stripe has a stock ticker",
+    "Stripe filed an S-1 or completed an IPO"
+  ],
+
+  "quality_thresholds": {
+    "min_faithfulness": 0.75,
+    "min_relevancy": 0.70,
+    "min_citation_coverage": 0.50,
+    "min_word_count": 250,
+    "min_citations": 3
+  },
+
+  "sentiment_range": [-0.2, 0.7],
+  "notes": "Primary test for private company handling. No stock price chart or market cap should appear. Accountant should gracefully report no public data. Normalizer must not fabricate a ticker symbol."
+}

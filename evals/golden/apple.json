@@ -1,0 +1,43 @@
+{
+  "company": "Apple",
+  "ticker": "AAPL",
+  "is_public": true,
+  "ceo": "Tim Cook",
+  "sector": "Technology",
+  "industry": "Consumer Electronics",
+  "last_verified": "2026-04-17",
+
+  "stable_facts": [
+    "Tim Cook is the CEO of Apple",
+    "Apple is headquartered in Cupertino California",
+    "Apple trades on NASDAQ under ticker AAPL",
+    "Apple designs and sells iPhone Mac iPad and wearables"
+  ],
+
+  "expected_patterns": [
+    "mentions App Store legal or regulatory challenge",
+    "mentions Apple Services segment as revenue driver",
+    "mentions revenue or earnings figure for recent quarter",
+    "mentions China as both a risk and a key revenue market",
+    "mentions AI features or Apple Intelligence",
+    "references SEC filing earnings release or major financial outlet"
+  ],
+
+  "forbidden_content": [
+    "Steve Jobs is CEO",
+    "Apple has never faced antitrust action",
+    "Apple has no legal challenges",
+    "Apple is a private company"
+  ],
+
+  "quality_thresholds": {
+    "min_faithfulness": 0.80,
+    "min_relevancy": 0.75,
+    "min_citation_coverage": 0.65,
+    "min_word_count": 350,
+    "min_citations": 4
+  },
+
+  "sentiment_range": [-0.5, 0.4],
+  "notes": "Apple has strong financials but confirmed legal violations. App Store contempt ruling is documented fact from April 2025. Debt-to-equity is high and should appear. China is both risk and opportunity."
+}

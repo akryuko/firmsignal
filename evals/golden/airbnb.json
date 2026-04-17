@@ -1,0 +1,43 @@
+{
+  "company": "Airbnb",
+  "ticker": "ABNB",
+  "is_public": true,
+  "ceo": "Brian Chesky",
+  "sector": "Consumer Cyclical",
+  "industry": "Travel & Lodging",
+  "last_verified": "2026-04-17",
+
+  "stable_facts": [
+    "Brian Chesky is the CEO and co-founder of Airbnb",
+    "Airbnb is headquartered in San Francisco California",
+    "Airbnb trades on NASDAQ under ticker ABNB",
+    "Airbnb operates a platform connecting hosts and guests for short-term lodging"
+  ],
+
+  "expected_patterns": [
+    "mentions Airbnb revenue or nights booked figure for recent period",
+    "mentions regulatory pressure on short-term rentals in cities",
+    "mentions competition from hotels or traditional hospitality sector",
+    "mentions free cash flow or profitability as a positive signal",
+    "mentions Airbnb expansion into hotels or new product categories",
+    "references SEC filing or major financial outlet as source"
+  ],
+
+  "forbidden_content": [
+    "Brian Chesky is no longer CEO",
+    "Airbnb went bankrupt during COVID",
+    "Airbnb has no regulatory challenges",
+    "Airbnb is a private company"
+  ],
+
+  "quality_thresholds": {
+    "min_faithfulness": 0.75,
+    "min_relevancy": 0.70,
+    "min_citation_coverage": 0.55,
+    "min_word_count": 300,
+    "min_citations": 3
+  },
+
+  "sentiment_range": [-0.3, 0.5],
+  "notes": "Tests travel sector coverage. Key tension is strong cash flow versus regulatory headwinds and hotel competition. Chesky hotel expansion announcement is a notable recent strategic shift worth testing for."
+}

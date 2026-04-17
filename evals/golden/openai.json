@@ -1,0 +1,43 @@
+{
+  "company": "OpenAI",
+  "ticker": null,
+  "is_public": false,
+  "ceo": "Sam Altman",
+  "sector": "Artificial Intelligence",
+  "industry": "Large Language Models",
+  "last_verified": "2026-04-17",
+
+  "stable_facts": [
+    "Sam Altman is the CEO of OpenAI",
+    "OpenAI is a private company with no publicly traded stock",
+    "OpenAI created ChatGPT and the GPT series of language models",
+    "Microsoft is a major investor and partner of OpenAI"
+  ],
+
+  "expected_patterns": [
+    "mentions OpenAI valuation or most recent funding round",
+    "mentions ChatGPT or GPT models as core products",
+    "mentions competition from Anthropic Google or other AI labs",
+    "mentions IPO speculation or timeline",
+    "mentions Microsoft partnership or investment",
+    "mentions revenue growth or annualized revenue figure"
+  ],
+
+  "forbidden_content": [
+    "OpenAI is publicly traded",
+    "Sam Altman was permanently removed as CEO",
+    "OpenAI has no competitors",
+    "OpenAI was founded by Elon Musk alone"
+  ],
+
+  "quality_thresholds": {
+    "min_faithfulness": 0.75,
+    "min_relevancy": 0.70,
+    "min_citation_coverage": 0.50,
+    "min_word_count": 250,
+    "min_citations": 3
+  },
+
+  "sentiment_range": [-0.3, 0.6],
+  "notes": "Sam Altman was temporarily removed in November 2023 but reinstated within days — agent must not report him as permanently removed. Key risks are competition from Anthropic and projected losses despite high revenue. High valuation relative to revenue is a financial risk."
+}

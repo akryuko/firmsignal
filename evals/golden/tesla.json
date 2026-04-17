@@ -1,0 +1,43 @@
+{
+  "company": "Tesla",
+  "ticker": "TSLA",
+  "is_public": true,
+  "ceo": "Elon Musk",
+  "sector": "Consumer Cyclical",
+  "industry": "Auto Manufacturers",
+  "last_verified": "2026-04-17",
+
+  "stable_facts": [
+    "Elon Musk is the CEO of Tesla",
+    "Tesla is headquartered in Austin Texas",
+    "Tesla trades on NASDAQ under ticker TSLA",
+    "Tesla manufactures electric vehicles and energy storage products"
+  ],
+
+  "expected_patterns": [
+    "mentions Tesla revenue or delivery figure for recent period",
+    "mentions autonomous driving Robotaxi or Full Self-Driving",
+    "mentions Elon Musk divided attention political activities or other ventures as risk",
+    "mentions competition in electric vehicle market from Chinese manufacturers or legacy automakers",
+    "mentions energy storage or non-vehicle revenue as growth area",
+    "references SEC filing or major financial outlet as source"
+  ],
+
+  "forbidden_content": [
+    "Elon Musk has stepped down or resigned from Tesla",
+    "Tesla has no EV competition",
+    "Tesla had its best revenue year ever in 2025",
+    "Tesla is a private company"
+  ],
+
+  "quality_thresholds": {
+    "min_faithfulness": 0.80,
+    "min_relevancy": 0.75,
+    "min_citation_coverage": 0.60,
+    "min_word_count": 350,
+    "min_citations": 4
+  },
+
+  "sentiment_range": [-0.7, 0.2],
+  "notes": "Revenue declined for first time in 2025. xAI investment by Tesla is a governance concern. Musk political activities are a documented reputational risk. Robotaxi launch in Bay Area is a genuine positive. High sentiment variance — Skeptic calibration is key test here."
+}

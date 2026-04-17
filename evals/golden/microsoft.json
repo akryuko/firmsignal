@@ -1,0 +1,43 @@
+{
+  "company": "Microsoft",
+  "ticker": "MSFT",
+  "is_public": true,
+  "ceo": "Satya Nadella",
+  "sector": "Technology",
+  "industry": "Software - Infrastructure",
+  "last_verified": "2026-04-17",
+
+  "stable_facts": [
+    "Satya Nadella is the CEO of Microsoft",
+    "Microsoft is headquartered in Redmond Washington",
+    "Microsoft trades on NASDAQ under ticker MSFT",
+    "Microsoft operates Azure cloud Windows Office and LinkedIn"
+  ],
+
+  "expected_patterns": [
+    "mentions Microsoft layoffs or workforce reduction",
+    "mentions AI investment or Copilot strategy",
+    "mentions regulatory or legal challenge in any market",
+    "mentions Azure cloud revenue growth",
+    "mentions revenue or earnings figure for recent period",
+    "references SEC filing Bloomberg Reuters or FT as source"
+  ],
+
+  "forbidden_content": [
+    "Bill Gates is CEO",
+    "Steve Ballmer is CEO",
+    "Microsoft has conducted no layoffs",
+    "Microsoft has no AI products"
+  ],
+
+  "quality_thresholds": {
+    "min_faithfulness": 0.80,
+    "min_relevancy": 0.75,
+    "min_citation_coverage": 0.65,
+    "min_word_count": 350,
+    "min_citations": 4
+  },
+
+  "sentiment_range": [-0.6, 0.1],
+  "notes": "Key tension is massive AI investment versus layoffs and regulatory pressure. ACCC lawsuit is confirmed. Azure growth is a genuine positive. Brief should reflect analyst bullishness despite near-term headwinds."
+}

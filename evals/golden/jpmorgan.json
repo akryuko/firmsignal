@@ -1,0 +1,43 @@
+{
+  "company": "JPMorgan",
+  "ticker": "JPM",
+  "is_public": true,
+  "ceo": "Jamie Dimon",
+  "sector": "Financial Services",
+  "industry": "Banks - Diversified",
+  "last_verified": "2026-04-17",
+
+  "stable_facts": [
+    "Jamie Dimon is the Chairman and CEO of JPMorgan Chase",
+    "JPMorgan Chase is headquartered in New York City",
+    "JPMorgan trades on NYSE under ticker JPM",
+    "JPMorgan Chase is the largest bank in the United States by assets"
+  ],
+
+  "expected_patterns": [
+    "mentions JPMorgan revenue or net income figure for recent period",
+    "mentions investment banking or markets revenue",
+    "mentions geopolitical risk tariffs or macroeconomic uncertainty",
+    "mentions Basel III capital requirements or regulatory environment",
+    "mentions consumer banking or retail deposit growth",
+    "references SEC filing Bloomberg Reuters or WSJ as source"
+  ],
+
+  "forbidden_content": [
+    "Jamie Dimon has resigned or retired",
+    "JPMorgan is losing money",
+    "JPMorgan failed regulatory stress tests",
+    "JPMorgan is not the largest US bank"
+  ],
+
+  "quality_thresholds": {
+    "min_faithfulness": 0.80,
+    "min_relevancy": 0.75,
+    "min_citation_coverage": 0.65,
+    "min_word_count": 350,
+    "min_citations": 4
+  },
+
+  "sentiment_range": [0.0, 0.7],
+  "notes": "Tests financial sector coverage. JPMorgan is genuinely strong financially — Skeptic should reflect neutral-to-positive sentiment. Primary risks are macroeconomic uncertainty and regulatory capital requirements not internal failures."
+}
