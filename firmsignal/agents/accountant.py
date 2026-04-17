@@ -1,3 +1,4 @@
+import concurrent.futures
 import os
 import re
 from datetime import datetime
@@ -9,6 +10,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from firmsignal.models import AccountantOutput, PricePoint
 from firmsignal.state import FirmState
+from firmsignal.tools.retry import llm_retry, yfinance_retry
 
 
 # ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -36,6 +38,7 @@ def _llm(max_tokens: int = 50):
 
 # ─── Step 1: Ticker resolution ─────────────────────────────────────────────────
 
+@llm_retry
 def _find_ticker(company: str) -> str | None:
     """
     Use Claude Haiku to turn a company name into a ticker symbol.
@@ -59,6 +62,7 @@ def _find_ticker(company: str) -> str | None:
 
 # ─── Step 2: yfinance data pull ────────────────────────────────────────────────
 
+@yfinance_retry
 def _pull_data(ticker_str: str) -> tuple[dict, list[PricePoint]] | None:
     """
     Pulls fundamentals + 5-year monthly price history from yfinance.
@@ -151,6 +155,7 @@ def _pull_data(ticker_str: str) -> tuple[dict, list[PricePoint]] | None:
 
 # ─── Step 3: Financial summary ─────────────────────────────────────────────────
 
+@llm_retry
 def _generate_summary(company: str, ticker: str, f: dict) -> str:
     """
     Claude Haiku writes a 3-sentence analyst-style summary from raw numbers.
@@ -216,8 +221,25 @@ def accountant_node(state: FirmState) -> dict:
 
         print(f"[Accountant] Ticker resolved: {ticker}")
 
-        # Step 2: yfinance pull
-        result = _pull_data(ticker)
+        # Step 2: yfinance pull with 20s hard timeout
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        future = executor.submit(_pull_data, ticker)
+        executor.shutdown(wait=False)
+        try:
+            result = future.result(timeout=20)
+        except concurrent.futures.TimeoutError:
+            print(f"[Accountant] yfinance timed out after 20s for {ticker}")
+            output = AccountantOutput(
+                company_name=company,
+                ticker=ticker,
+                is_public=False,
+                financial_summary=(
+                    f"Financial data unavailable: yfinance request for {ticker} "
+                    "timed out after 20 seconds."
+                ),
+            )
+            return {"accountant_output": output.model_dump(), "error": None}
+
         if result is None:
             # Claude returned a wrong ticker — treat as private
             print(f"[Accountant] Ticker {ticker} returned no data — treating as private")
