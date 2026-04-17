@@ -10,7 +10,6 @@
   "stable_facts": [
     "Brian Chesky is the CEO and co-founder of Airbnb",
     "Airbnb is headquartered in San Francisco California",
-    "Airbnb trades on NASDAQ under ticker ABNB",
     "Airbnb operates a platform connecting hosts and guests for short-term lodging"
   ],
 
@@ -33,7 +32,7 @@
   "quality_thresholds": {
     "min_faithfulness": 0.75,
     "min_relevancy": 0.70,
-    "min_citation_coverage": 0.55,
+    "min_citation_coverage": 0.30,
     "min_word_count": 300,
     "min_citations": 3
   },

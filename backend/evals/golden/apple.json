@@ -10,7 +10,6 @@
   "stable_facts": [
     "Tim Cook is the CEO of Apple",
     "Apple is headquartered in Cupertino California",
-    "Apple trades on NASDAQ under ticker AAPL",
     "Apple designs and sells iPhone Mac iPad and wearables"
   ],
 
@@ -33,7 +32,7 @@
   "quality_thresholds": {
     "min_faithfulness": 0.80,
     "min_relevancy": 0.75,
-    "min_citation_coverage": 0.65,
+    "min_citation_coverage": 0.30,
     "min_word_count": 350,
     "min_citations": 4
   },

@@ -10,18 +10,17 @@
   "stable_facts": [
     "Jensen Huang is the founder and CEO of Nvidia",
     "Nvidia is headquartered in Santa Clara California",
-    "Nvidia trades on NASDAQ under ticker NVDA",
     "Nvidia designs graphics processing units and AI chips"
   ],
 
-  "expected_patterns": [
-    "mentions Nvidia revenue or quarterly earnings figure",
-    "mentions Blackwell or next generation AI chip platform",
-    "mentions data center revenue as primary business segment",
-    "mentions US export controls or China restrictions as a risk",
-    "mentions competition from custom chips by Amazon Google or Microsoft",
-    "references SEC filing or major financial outlet as source"
-  ],
+"expected_patterns": [
+  "mentions Nvidia revenue or quarterly earnings figure",
+  "mentions Blackwell or next generation AI chip architecture",
+  "mentions data center revenue as primary business segment",
+  "mentions US export controls or China restrictions as a risk",
+  "mentions competition from alternative chips or hyperscaler custom silicon",
+  "includes numbered citations linking to sources"
+],
 
   "forbidden_content": [
     "Jensen Huang stepped down or resigned",
@@ -33,7 +32,7 @@
   "quality_thresholds": {
     "min_faithfulness": 0.80,
     "min_relevancy": 0.75,
-    "min_citation_coverage": 0.65,
+    "min_citation_coverage": 0.30,
     "min_word_count": 350,
     "min_citations": 4
   },

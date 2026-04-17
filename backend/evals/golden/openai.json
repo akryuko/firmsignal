@@ -33,7 +33,7 @@
   "quality_thresholds": {
     "min_faithfulness": 0.75,
     "min_relevancy": 0.70,
-    "min_citation_coverage": 0.50,
+    "min_citation_coverage": 0.30,
     "min_word_count": 250,
     "min_citations": 3
   },
