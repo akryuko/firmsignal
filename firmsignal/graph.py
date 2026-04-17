@@ -1,6 +1,14 @@
 from dotenv import load_dotenv
 load_dotenv()
 
+# Timeout budget per run (before HITL):
+# Normalizer:  10s
+# Scout:       45s
+# Accountant:  20s
+# Skeptic:     60s
+# Total max:  135s before HITL pause
+# Synthesizer: 90s after HITL approval
+
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
 

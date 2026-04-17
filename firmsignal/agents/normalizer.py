@@ -1,3 +1,4 @@
+import concurrent.futures
 import json
 import os
 
@@ -5,6 +6,7 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from firmsignal.state import FirmState
+from firmsignal.tools.retry import llm_retry
 
 
 _SYSTEM = """\
@@ -37,6 +39,11 @@ Examples:
 - "stripe" → Stripe, null, private: true
 - "Nvidia" → Nvidia, NVDA, corrected: false
 """
+
+
+@llm_retry
+def _invoke_normalizer_llm(llm, messages):
+    return llm.invoke(messages)
 
 
 def normalizer_node(state: FirmState) -> dict:
@@ -72,11 +79,22 @@ def normalizer_node(state: FirmState) -> dict:
             temperature=0,
             max_tokens=200,
         )
+        messages = [SystemMessage(content=_SYSTEM), HumanMessage(content=raw_input)]
 
-        response = llm.invoke([
-            SystemMessage(content=_SYSTEM),
-            HumanMessage(content=raw_input),
-        ])
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        future = executor.submit(_invoke_normalizer_llm, llm, messages)
+        executor.shutdown(wait=False)
+        try:
+            response = future.result(timeout=10)
+        except concurrent.futures.TimeoutError:
+            print("[Normalizer] Timeout — using raw input")
+            return {
+                "company_name":     raw_input,
+                "ticker_hint":      None,
+                "is_private_hint":  False,
+                "input_correction": None,
+                "error":            None,
+            }
 
         text = response.content.strip()
         # Strip markdown code fences if present

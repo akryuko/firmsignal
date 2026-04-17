@@ -1,4 +1,5 @@
 import os
+import time
 from datetime import datetime
 
 from langchain_anthropic import ChatAnthropic
@@ -7,7 +8,8 @@ from tavily import TavilyClient
 
 from firmsignal.models import SkepticOutput
 from firmsignal.state import FirmState
-from firmsignal.tools.cache import get_cached, set_cached
+from firmsignal.tools.cache import get_cached, run_tavily_search, set_cached
+from firmsignal.tools.retry import llm_retry
 from firmsignal.tools.source_quality import (
     EXCLUDED_DOMAINS,
     TRUSTED_NEWS_DOMAINS,
@@ -87,29 +89,33 @@ def _search(
     include_domains: list[str] | None = None,
     exclude_domains: list[str] | None = None,
 ) -> list[dict]:
-    """Tavily search with shared Redis cache."""
+    """Tavily search with shared Redis cache and retry/timeout via run_tavily_search."""
     cached = get_cached(query)
     if cached is not None:
         print(f"    [cache hit] {query}")
         return cached
     print(f"    [tavily]    {query}")
-    try:
-        kwargs: dict = {
-            "query": query,
-            "search_depth": "advanced",
-            "max_results": max_results,
-        }
-        if include_domains:
-            kwargs["include_domains"] = include_domains
-        if exclude_domains:
-            kwargs["exclude_domains"] = exclude_domains
-        response = client.search(**kwargs)
-        results = response.get("results", [])
+    kwargs: dict = {
+        "query": query,
+        "search_depth": "advanced",
+        "max_results": max_results,
+    }
+    if include_domains:
+        kwargs["include_domains"] = include_domains
+    if exclude_domains:
+        kwargs["exclude_domains"] = exclude_domains
+
+    results = run_tavily_search(client, kwargs)
+    if results:
         set_cached(query, results)
-        return results
-    except Exception as e:
-        print(f"    [tavily error] {e}")
-        return []
+    return results
+
+
+# ─── LLM invoke ───────────────────────────────────────────────────────────────
+
+@llm_retry
+def _invoke_llm(llm, messages):
+    return llm.invoke(messages)
 
 
 # ─── Prompt ───────────────────────────────────────────────────────────────────
@@ -189,7 +195,7 @@ def skeptic_node(state: FirmState) -> dict:
 
     Sequence:
     1. Search Reddit (finance + employee subreddits) via PRAW
-    2. Search Tavily for Glassdoor, controversies, and layoff reports (3 queries)
+    2. Search Tavily for Glassdoor, controversies, and layoff reports (4 queries)
     3. Feed everything to Claude Haiku with an explicitly skeptical system prompt
     4. Return structured SkepticOutput with risk flags, sentiment, and signals
 
@@ -200,13 +206,24 @@ def skeptic_node(state: FirmState) -> dict:
     year = datetime.now().strftime("%Y")
     today = datetime.now().strftime("%Y-%m-%d")
 
+    node_start = time.time()
+    timeout_reached = [False]
+
+    def _under_budget():
+        if time.time() - node_start >= 60:
+            if not timeout_reached[0]:
+                print("[Skeptic] Timeout reached — returning partial results")
+                timeout_reached[0] = True
+            return False
+        return True
+
     print(f"\n[Skeptic] Starting sentiment & risk analysis on '{company}'...")
 
     try:
         # Step 1: Reddit
         reddit_posts = _search_reddit(company)
 
-        # Step 2: Three Tavily queries targeting the three main risk areas
+        # Step 2: Four Tavily queries targeting the main risk areas
         tavily = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
 
         # Employee culture: query avoids direct Glassdoor page URLs (Cloudflare-protected)
@@ -221,33 +238,42 @@ def skeptic_node(state: FirmState) -> dict:
             ),
             min_tier=3,
         )
-        controversy = filter_results(
-            _search(
-                tavily,
-                f"{company} controversy lawsuit scandal criticism {year}",
-                include_domains=TRUSTED_NEWS_DOMAINS,
-                exclude_domains=EXCLUDED_DOMAINS,
-            ),
-            min_tier=2,
-        )
-        layoffs = filter_results(
-            _search(
-                tavily,
-                f"{company} layoffs workforce reduction problems {year}",
-                include_domains=TRUSTED_NEWS_DOMAINS,
-                exclude_domains=EXCLUDED_DOMAINS,
-            ),
-            min_tier=2,
-        )
-        regulatory = filter_results(
-            _search(
-                tavily,
-                f"{company} antitrust regulatory investigation fine export control {year}",
-                include_domains=TRUSTED_NEWS_DOMAINS,
-                exclude_domains=EXCLUDED_DOMAINS,
-            ),
-            min_tier=2,
-        )
+
+        controversy = []
+        if _under_budget():
+            controversy = filter_results(
+                _search(
+                    tavily,
+                    f"{company} controversy lawsuit scandal criticism {year}",
+                    include_domains=TRUSTED_NEWS_DOMAINS,
+                    exclude_domains=EXCLUDED_DOMAINS,
+                ),
+                min_tier=2,
+            )
+
+        layoffs = []
+        if _under_budget():
+            layoffs = filter_results(
+                _search(
+                    tavily,
+                    f"{company} layoffs workforce reduction problems {year}",
+                    include_domains=TRUSTED_NEWS_DOMAINS,
+                    exclude_domains=EXCLUDED_DOMAINS,
+                ),
+                min_tier=2,
+            )
+
+        regulatory = []
+        if _under_budget():
+            regulatory = filter_results(
+                _search(
+                    tavily,
+                    f"{company} antitrust regulatory investigation fine export control {year}",
+                    include_domains=TRUSTED_NEWS_DOMAINS,
+                    exclude_domains=EXCLUDED_DOMAINS,
+                ),
+                min_tier=2,
+            )
 
         web_results = culture + controversy + layoffs + regulatory
         total = len(reddit_posts) + len(web_results)
@@ -265,10 +291,13 @@ def skeptic_node(state: FirmState) -> dict:
             max_tokens=2048,
         ).with_structured_output(SkepticOutput)
 
-        output: SkepticOutput = llm.invoke([
-            SystemMessage(content=_SYSTEM),
-            HumanMessage(content=_build_prompt(company, reddit_posts, web_results)),
-        ])
+        output: SkepticOutput = _invoke_llm(
+            llm,
+            [
+                SystemMessage(content=_SYSTEM),
+                HumanMessage(content=_build_prompt(company, reddit_posts, web_results)),
+            ],
+        )
 
         print(
             f"    [skeptic raw] flags={len(output.risk_flags)} "

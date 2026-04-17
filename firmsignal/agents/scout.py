@@ -1,4 +1,5 @@
 import os
+import time
 from datetime import datetime
 
 from langchain_anthropic import ChatAnthropic
@@ -7,7 +8,8 @@ from tavily import TavilyClient
 
 from firmsignal.models import ScoutOutput
 from firmsignal.state import FirmState
-from firmsignal.tools.cache import get_cached, set_cached
+from firmsignal.tools.cache import get_cached, run_tavily_search, set_cached
+from firmsignal.tools.retry import llm_retry
 from firmsignal.tools.source_quality import (
     EXCLUDED_DOMAINS,
     TRUSTED_NEWS_DOMAINS,
@@ -31,6 +33,11 @@ def _get_llm():
     ).with_structured_output(ScoutOutput)
 
 
+@llm_retry
+def _invoke_llm(llm, messages):
+    return llm.invoke(messages)
+
+
 # ─── Search layer ─────────────────────────────────────────────────────────────
 
 def _search(
@@ -42,7 +49,8 @@ def _search(
 ) -> list[dict]:
     """
     Runs a Tavily search, checking the Redis cache first.
-    On cache miss: hits Tavily API, stores result, returns it.
+    On cache miss: hits Tavily API via run_tavily_search (retries + timeout),
+    stores result, returns it.
     On Tavily failure: returns empty list (agent handles gracefully).
     """
     cached = get_cached(query)
@@ -51,24 +59,21 @@ def _search(
         return cached
 
     print(f"    [tavily]    {query}")
-    try:
-        kwargs: dict = {
-            "query": query,
-            "search_depth": "advanced",
-            "max_results": max_results,
-            "include_answer": False,
-        }
-        if include_domains:
-            kwargs["include_domains"] = include_domains
-        if exclude_domains:
-            kwargs["exclude_domains"] = exclude_domains
-        response = client.search(**kwargs)
-        results = response.get("results", [])
+    kwargs: dict = {
+        "query": query,
+        "search_depth": "advanced",
+        "max_results": max_results,
+        "include_answer": False,
+    }
+    if include_domains:
+        kwargs["include_domains"] = include_domains
+    if exclude_domains:
+        kwargs["exclude_domains"] = exclude_domains
+
+    results = run_tavily_search(client, kwargs)
+    if results:
         set_cached(query, results)
-        return results
-    except Exception as e:
-        print(f"    [tavily error] {e}")
-        return []
+    return results
 
 
 # ─── Prompt ───────────────────────────────────────────────────────────────────
@@ -126,6 +131,17 @@ def scout_node(state: FirmState) -> dict:
     today = datetime.now().strftime("%Y-%m-%d")
     year = today[:4]
 
+    node_start = time.time()
+    timeout_reached = [False]
+
+    def _under_budget():
+        if time.time() - node_start >= 45:
+            if not timeout_reached[0]:
+                print("[Scout] Timeout reached — returning partial results")
+                timeout_reached[0] = True
+            return False
+        return True
+
     print(f"\n[Scout] Starting research on '{company}'...")
 
     try:
@@ -146,26 +162,32 @@ def scout_node(state: FirmState) -> dict:
             ),
             min_tier=2,
         )
-        leadership_results = filter_results(
-            _search(
-                tavily,
-                query=f"{company} CEO leadership executive changes {year}",
-                max_results=5,
-                include_domains=TRUSTED_NEWS_DOMAINS,
-                exclude_domains=EXCLUDED_DOMAINS,
-            ),
-            min_tier=2,
-        )
-        regulatory_results = filter_results(
-            _search(
-                tavily,
-                query=f"{company} SEC filing earnings regulatory {year}",
-                max_results=5,
-                include_domains=TRUSTED_NEWS_DOMAINS,
-                exclude_domains=EXCLUDED_DOMAINS,
-            ),
-            min_tier=3,
-        )
+
+        leadership_results = []
+        if _under_budget():
+            leadership_results = filter_results(
+                _search(
+                    tavily,
+                    query=f"{company} CEO leadership executive changes {year}",
+                    max_results=5,
+                    include_domains=TRUSTED_NEWS_DOMAINS,
+                    exclude_domains=EXCLUDED_DOMAINS,
+                ),
+                min_tier=2,
+            )
+
+        regulatory_results = []
+        if _under_budget():
+            regulatory_results = filter_results(
+                _search(
+                    tavily,
+                    query=f"{company} SEC filing earnings regulatory {year}",
+                    max_results=5,
+                    include_domains=TRUSTED_NEWS_DOMAINS,
+                    exclude_domains=EXCLUDED_DOMAINS,
+                ),
+                min_tier=3,
+            )
 
         all_results = news_results + leadership_results + regulatory_results
 
@@ -180,11 +202,12 @@ def scout_node(state: FirmState) -> dict:
 
         # Extract structured data via Claude Haiku
         llm = _get_llm()
-        output: ScoutOutput = llm.invoke(
+        output: ScoutOutput = _invoke_llm(
+            llm,
             [
                 SystemMessage(content=_SYSTEM),
                 HumanMessage(content=_build_prompt(company, all_results, today)),
-            ]
+            ],
         )
 
         # Build the sources list — these flow into the final citation layer

@@ -1,3 +1,4 @@
+import concurrent.futures
 import re
 from datetime import datetime
 
@@ -6,6 +7,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from firmsignal.models import SynthesizerOutput
 from firmsignal.state import FirmState
+from firmsignal.tools.retry import llm_retry
 from firmsignal.tools.source_quality import get_source_tier, is_valid_result
 
 
@@ -275,6 +277,13 @@ Remember: every factual claim needs a [N] citation matching the source list abov
 """.strip()
 
 
+# ─── LLM invoke ───────────────────────────────────────────────────────────────
+
+@llm_retry
+def _invoke_llm(llm, messages):
+    return llm.invoke(messages)
+
+
 # ─── The node ─────────────────────────────────────────────────────────────────
 
 def synthesizer_node(state: FirmState) -> dict:
@@ -308,11 +317,26 @@ def synthesizer_node(state: FirmState) -> dict:
         )
 
         context = _build_context(state, sources)
+        messages = [SystemMessage(content=_SYSTEM), HumanMessage(content=context)]
 
-        response = llm.invoke([
-            SystemMessage(content=_SYSTEM),
-            HumanMessage(content=context),
-        ])
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        future = executor.submit(_invoke_llm, llm, messages)
+        executor.shutdown(wait=False)
+        try:
+            response = future.result(timeout=90)
+        except concurrent.futures.TimeoutError:
+            print("[Synthesizer] Synthesis timed out after 90s")
+            partial_brief = (
+                "> Note: Report generation timed out. "
+                "The following is a partial summary based on available data."
+            )
+            output = SynthesizerOutput(
+                brief=partial_brief,
+                word_count=len(partial_brief.split()),
+                sources_cited=0,
+                generated_at=today,
+            )
+            return {"final_brief": output.brief, "error": None}
 
         brief = response.content.strip()
 
