@@ -228,24 +228,122 @@ def run_single_eval(
             for issue in private_check["issues"]:
                 print(f"       ✗ {issue}")
 
-    # Compute overall score
+    # DeepEval checks (requires OPENAI_API_KEY)
+    from evals.deepeval_checks import run_deepeval_checks
+
+    print(f"     deepeval:         running faithfulness + relevancy...")
+    deepeval_results = run_deepeval_checks(
+        company=golden["company"],
+        brief=brief,
+        scout_output=final.get("scout_output") or {},
+        accountant_output=accountant,
+        skeptic_output=skeptic,
+    )
+
+    results["deepeval"] = deepeval_results
+
+    if deepeval_results.get("skipped"):
+        print(f"     deepeval:         skipped — {deepeval_results['reason']}")
+    else:
+        f_score = deepeval_results["faithfulness"]["score"]
+        r_score = deepeval_results["answer_relevancy"]["score"]
+        f_pass  = "PASS" if deepeval_results["faithfulness"]["passed"] else "FAIL"
+        r_pass  = "PASS" if deepeval_results["answer_relevancy"]["passed"] else "FAIL"
+        print(f"     faithfulness:     {f_pass} — {f_score:.2f}")
+        print(f"     answer_relevancy: {r_pass} — {r_score:.2f}")
+
     scoring = compute_overall_score(results)
 
-    print(f"\n  ── Score: {scoring['overall_score']}/100  Grade: {scoring['grade']} ──")
+    deepeval_scores = None
+    if not deepeval_results.get("skipped"):
+        deepeval_scores = {
+            "faithfulness":    deepeval_results["faithfulness"]["score"],
+            "answer_relevancy": deepeval_results["answer_relevancy"]["score"],
+        }
 
     return {
-        "company":         company_slug,
-        "status":          "success",
-        "overall_score":   scoring["overall_score"],
-        "grade":           scoring["grade"],
+        "company":          company_slug,
+        "status":           "success",
+        "overall_score":    scoring["overall_score"],
+        "grade":            scoring["grade"],
         "component_scores": scoring["component_scores"],
-        "checks":          results,
-        "pipeline_time_s": elapsed,
-        "word_count":      results["structure"]["word_count"],
-        "citations_used":  results["citations"]["unique_citations_used"],
-        "sentiment_score": sentiment_score,
-        "sources_count":   len(sources),
-        "is_public":       golden.get("is_public", True),
+        "deepeval_included": scoring["deepeval_included"],
+        "deepeval_scores":  deepeval_scores,
+        "pipeline_time_s":  elapsed,
+        "word_count":       results.get("structure", {}).get("word_count", 0),
+        "citations_used":   results.get("citations", {}).get("unique_citations_used", 0),
+    }
+
+def compute_overall_score(results: dict) -> dict:
+    # Check if DeepEval ran successfully
+    deepeval = results.get("deepeval", {})
+    deepeval_ran = not deepeval.get("skipped", True)
+
+    if deepeval_ran:
+        # With DeepEval: redistribute weights to include it
+        weights = {
+            "forbidden_content": 0.20,
+            "patterns":          0.15,
+            "citations":         0.15,
+            "stable_facts":      0.10,
+            "structure":         0.08,
+            "sentiment":         0.05,
+            "source_quality":    0.05,
+            "faithfulness":      0.12,
+            "answer_relevancy":  0.10,
+        }
+        scores = {
+            "forbidden_content": results.get("forbidden_content", {}).get("score", 1.0),
+            "patterns":          results.get("patterns", {}).get("score", 1.0),
+            "citations":         1.0 if results.get("citations", {}).get("passed") else 0.5,
+            "stable_facts":      results.get("stable_facts", {}).get("score", 1.0),
+            "structure":         results.get("structure", {}).get("section_score", 1.0),
+            "sentiment":         results.get("sentiment", {}).get("score", 1.0),
+            "source_quality":    results.get("source_quality", {}).get("score", 1.0),
+            "faithfulness":      deepeval["faithfulness"]["score"] if deepeval.get("faithfulness") else 0.0,
+            "answer_relevancy":  deepeval["answer_relevancy"]["score"] if deepeval.get("answer_relevancy") else 0.0,
+        }
+    else:
+        # Without DeepEval: original weights
+        weights = {
+            "forbidden_content": 0.25,
+            "patterns":          0.20,
+            "citations":         0.20,
+            "stable_facts":      0.15,
+            "structure":         0.10,
+            "sentiment":         0.05,
+            "source_quality":    0.05,
+        }
+        scores = {
+            "forbidden_content": results.get("forbidden_content", {}).get("score", 1.0),
+            "patterns":          results.get("patterns", {}).get("score", 1.0),
+            "citations":         1.0 if results.get("citations", {}).get("passed") else 0.5,
+            "stable_facts":      results.get("stable_facts", {}).get("score", 1.0),
+            "structure":         results.get("structure", {}).get("section_score", 1.0),
+            "sentiment":         results.get("sentiment", {}).get("score", 1.0),
+            "source_quality":    results.get("source_quality", {}).get("score", 1.0),
+        }
+
+    weighted = sum(scores[k] * weights[k] for k in weights)
+    overall  = round(weighted * 100, 1)
+
+    if results.get("forbidden_content", {}).get("critical"):
+        overall = min(overall, 30.0)
+
+    grade = (
+        "A" if overall >= 90 else
+        "B" if overall >= 80 else
+        "C" if overall >= 70 else
+        "D" if overall >= 60 else
+        "F"
+    )
+
+    return {
+        "overall_score":    overall,
+        "grade":            grade,
+        "component_scores": scores,
+        "weights":          weights,
+        "deepeval_included": deepeval_ran,
     }
 
 
@@ -255,24 +353,49 @@ def print_summary(all_results: list[dict]) -> dict:
     successful = [r for r in all_results if r["status"] == "success"]
     failed     = [r for r in all_results if r["status"] != "success"]
 
-    print(f"\n{'═' * 55}")
+    # Detect if any run included DeepEval
+    deepeval_ran = any(r.get("deepeval_included") for r in successful)
+
+    print(f"\n{'═' * 70}")
     print(f"  EVAL RESULTS SUMMARY")
-    print(f"{'═' * 55}")
-    print(f"  {'Company':<15} {'Score':>6}  {'Grade':>5}  {'Time':>6}  {'Words':>6}  {'Cites':>5}")
-    print(f"  {'─'*15} {'─'*6}  {'─'*5}  {'─'*6}  {'─'*6}  {'─'*5}")
+    print(f"{'═' * 70}")
+
+    if deepeval_ran:
+        print(f"  {'Company':<15} {'Score':>6}  {'Grade':>5}  {'Faith':>6}  {'Relev':>6}  {'Time':>6}  {'Words':>6}")
+        print(f"  {'─'*15} {'─'*6}  {'─'*5}  {'─'*6}  {'─'*6}  {'─'*6}  {'─'*6}")
+    else:
+        print(f"  {'Company':<15} {'Score':>6}  {'Grade':>5}  {'Time':>6}  {'Words':>6}  {'Cites':>5}")
+        print(f"  {'─'*15} {'─'*6}  {'─'*5}  {'─'*6}  {'─'*6}  {'─'*5}")
 
     for r in all_results:
         if r["status"] == "success":
-            print(
-                f"  {r['company']:<15} "
-                f"{r['overall_score']:>5.1f}  "
-                f"{r['grade']:>5}  "
-                f"{r['pipeline_time_s']:>5.0f}s  "
-                f"{r['word_count']:>6}  "
-                f"{r['citations_used']:>5}"
-            )
+            if deepeval_ran:
+                de   = r.get("deepeval_scores", {})
+                f    = de.get("faithfulness")
+                v    = de.get("answer_relevancy")
+                f_str = f"{f:.2f}" if f is not None else "─"
+                v_str = f"{v:.2f}" if v is not None else "─"
+                print(
+                    f"  {r['company']:<15} "
+                    f"{r['overall_score']:>5.1f}  "
+                    f"{r['grade']:>5}  "
+                    f"{f_str:>6}  "
+                    f"{v_str:>6}  "
+                    f"{r['pipeline_time_s']:>5.0f}s  "
+                    f"{r['word_count']:>6}"
+                )
+            else:
+                print(
+                    f"  {r['company']:<15} "
+                    f"{r['overall_score']:>5.1f}  "
+                    f"{r['grade']:>5}  "
+                    f"{r['pipeline_time_s']:>5.0f}s  "
+                    f"{r['word_count']:>6}  "
+                    f"{r['citations_used']:>5}"
+                )
         else:
-            print(f"  {r['company']:<15} {'ERROR':>6}  {'F':>5}  {'─':>6}  {'─':>6}  {'─':>5}")
+            cols = "  {'─':>6}  {'─':>6}  {'─':>6}  {'─':>6}" if deepeval_ran else "  {'─':>6}  {'─':>6}  {'─':>5}"
+            print(f"  {r['company']:<15} {'ERROR':>6}  {'F':>5}{cols}")
             print(f"    → {r.get('error', 'Unknown error')[:60]}")
 
     if successful:
@@ -281,49 +404,83 @@ def print_summary(all_results: list[dict]) -> dict:
         avg_words = sum(r["word_count"] for r in successful) / len(successful)
         avg_cites = sum(r["citations_used"] for r in successful) / len(successful)
 
-        print(f"\n  {'AVERAGE':<15} {avg_score:>5.1f}  {'─':>5}  {avg_time:>5.0f}s  {avg_words:>6.0f}  {avg_cites:>5.1f}")
+        if deepeval_ran:
+            f_scores = [r["deepeval_scores"]["faithfulness"] for r in successful
+                        if r.get("deepeval_scores", {}).get("faithfulness") is not None]
+            v_scores = [r["deepeval_scores"]["answer_relevancy"] for r in successful
+                        if r.get("deepeval_scores", {}).get("answer_relevancy") is not None]
+            avg_f = sum(f_scores) / len(f_scores) if f_scores else None
+            avg_v = sum(v_scores) / len(v_scores) if v_scores else None
+            f_str = f"{avg_f:.2f}" if avg_f is not None else "─"
+            v_str = f"{avg_v:.2f}" if avg_v is not None else "─"
+            print(f"\n  {'AVERAGE':<15} {avg_score:>5.1f}  {'─':>5}  {f_str:>6}  {v_str:>6}  {avg_time:>5.0f}s  {avg_words:>6.0f}")
+        else:
+            avg_f = avg_v = None
+            print(f"\n  {'AVERAGE':<15} {avg_score:>5.1f}  {'─':>5}  {avg_time:>5.0f}s  {avg_words:>6.0f}  {avg_cites:>5.1f}")
+    else:
+        avg_score = avg_time = avg_words = avg_cites = 0
+        avg_f = avg_v = None
 
-    print(f"\n  Passed: {len(successful)}/10  Failed: {len(failed)}/10")
+    total = len(all_results)
+    print(f"\n  Passed: {len(successful)}/{total}  Failed: {len(failed)}/{total}")
 
-    # Component averages (for README)
+    # Component averages
     if successful:
         components = ["stable_facts", "patterns", "citations", "forbidden_content",
                       "structure", "sentiment", "source_quality"]
+        if deepeval_ran:
+            components += ["faithfulness", "answer_relevancy"]
+
         print(f"\n  Component averages:")
         for c in components:
             scores = [
                 r["component_scores"].get(c, 1.0)
                 for r in successful
-                if "component_scores" in r
+                if "component_scores" in r and c in r["component_scores"]
             ]
             if scores:
                 avg = sum(scores) / len(scores)
                 print(f"    {c:<22} {avg:.0%}")
 
-    # README-ready summary
+    # README-ready block
+    deepeval_rows = ""
+    if deepeval_ran and avg_f is not None:
+        deepeval_rows = (
+            f"| Faithfulness (DeepEval) | {avg_f:.0%} |\n"
+            f"| Answer Relevancy (DeepEval) | {avg_v:.0%} |\n"
+        )
+
     readme_block = f"""
 ## Eval Results — {datetime.now().strftime('%B %Y')}
 
 | Metric | Score |
 |---|---|
 | Overall average | {avg_score:.1f}/100 |
-| Companies passing (≥70) | {sum(1 for r in successful if r['overall_score'] >= 70)}/10 |
-| Avg pipeline time | {avg_time:.0f}s |
+| Companies passing (≥70) | {sum(1 for r in successful if r['overall_score'] >= 70)}/{len(all_results)} |
+{deepeval_rows}| Avg pipeline time | {avg_time:.0f}s |
 | Avg words per brief | {avg_words:.0f} |
 | Avg citations used | {avg_cites:.1f} |
 | Private company handling | {sum(1 for r in successful if not r.get('is_public', True))}/3 graceful |
 """ if successful else ""
 
-    return {
-        "run_at":          datetime.now().isoformat(),
-        "total_companies": len(all_results),
-        "successful":      len(successful),
-        "failed":          len(failed),
-        "avg_score":       round(avg_score, 1) if successful else 0,
-        "results":         all_results,
-        "readme_summary":  readme_block.strip() if successful else "",
-    }
+    if readme_block:
+        print(f"\n{'═' * 70}")
+        print("  README-READY SUMMARY:")
+        print(f"{'═' * 70}")
+        print(readme_block)
 
+    return {
+        "run_at":           datetime.now().isoformat(),
+        "total_companies":  len(all_results),
+        "successful":       len(successful),
+        "failed":           len(failed),
+        "avg_score":        round(avg_score, 1) if successful else 0,
+        "avg_faithfulness": round(avg_f, 3) if avg_f is not None else None,
+        "avg_relevancy":    round(avg_v, 3) if avg_v is not None else None,
+        "deepeval_ran":     deepeval_ran,
+        "results":          all_results,
+        "readme_summary":   readme_block.strip() if successful else "",
+    }
 
 # ─── CLI entrypoint ────────────────────────────────────────────────────────────
 
@@ -369,11 +526,6 @@ def main():
     print(f"\n  Results saved to evals/results/latest.json")
     print(f"  Archive saved to evals/results/eval_{ts}.json")
 
-    if summary.get("readme_summary"):
-        print(f"\n{'═' * 55}")
-        print("  README-READY SUMMARY (copy into README.md):")
-        print(f"{'═' * 55}")
-        print(summary["readme_summary"])
 
 
 if __name__ == "__main__":
