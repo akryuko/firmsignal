@@ -1,0 +1,106 @@
+{
+  "run_at": "2026-04-17T10:37:24.316716",
+  "total_companies": 1,
+  "successful": 1,
+  "failed": 0,
+  "avg_score": 96.2,
+  "results": [
+    {
+      "company": "nvidia",
+      "status": "success",
+      "overall_score": 96.2,
+      "grade": "A",
+      "component_scores": {
+        "forbidden_content": 1.0,
+        "patterns": 1.0,
+        "citations": 1.0,
+        "stable_facts": 0.75,
+        "structure": 1.0,
+        "sentiment": 1.0,
+        "source_quality": 1.0
+      },
+      "checks": {
+        "stable_facts": {
+          "score": 0.75,
+          "passed": [
+            "Jensen Huang is the founder and CEO of Nvidia",
+            "Nvidia is headquartered in Santa Clara California",
+            "Nvidia designs graphics processing units and AI chips"
+          ],
+          "failed": [
+            "Nvidia trades on NASDAQ under ticker NVDA"
+          ],
+          "total": 4
+        },
+        "patterns": {
+          "score": 1.0,
+          "passed": [
+            "mentions Nvidia revenue or quarterly earnings figure",
+            "mentions Blackwell or next generation AI chip architecture",
+            "mentions data center revenue as primary business segment",
+            "mentions US export controls or China restrictions as a risk",
+            "mentions competition from alternative chips or hyperscaler custom silicon",
+            "includes numbered citations linking to sources"
+          ],
+          "failed": [],
+          "total": 6
+        },
+        "forbidden_content": {
+          "score": 1.0,
+          "violations": [],
+          "total": 4,
+          "critical": false
+        },
+        "citations": {
+          "score": 0.436,
+          "unique_citations_used": 12,
+          "min_citations_required": 4,
+          "citations_met": true,
+          "factual_sentences": 39,
+          "cited_sentences": 17,
+          "min_coverage_threshold": 0.3,
+          "passed": true
+        },
+        "sentiment": {
+          "score": 1.0,
+          "sentiment_score": 0.35,
+          "expected_range": [
+            0.1,
+            0.9
+          ],
+          "passed": true,
+          "deviation": 0
+        },
+        "structure": {
+          "word_count": 851,
+          "min_word_count": 350,
+          "word_count_passed": true,
+          "sections_found": [
+            "Executive Summary",
+            "Recent Developments",
+            "Financial Overview",
+            "Risk Assessment",
+            "Signal Summary"
+          ],
+          "sections_missing": [],
+          "section_score": 1.0,
+          "passed": true
+        },
+        "source_quality": {
+          "score": 1.0,
+          "trusted": 29,
+          "untrusted": 0,
+          "total": 29,
+          "untrusted_urls": []
+        }
+      },
+      "pipeline_time_s": 61.7,
+      "word_count": 851,
+      "citations_used": 12,
+      "sentiment_score": 0.35,
+      "sources_count": 29,
+      "is_public": true
+    }
+  ],
+  "readme_summary": "## Eval Results \u2014 April 2026\n\n| Metric | Score |\n|---|---|\n| Overall average | 96.2/100 |\n| Companies passing (\u226570) | 1/10 |\n| Avg pipeline time | 62s |\n| Avg words per brief | 851 |\n| Avg citations used | 12.0 |\n| Private company handling | 0/3 graceful |"
+}

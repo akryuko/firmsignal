@@ -1,0 +1,46 @@
+{
+  "company": "Anthropic",
+  "ticker": null,
+  "is_public": false,
+  "ceo": "Dario Amodei",
+  "sector": "Artificial Intelligence",
+  "industry": "Large Language Models",
+  "last_verified": "2026-04-17",
+
+  "stable_facts": [
+    "Dario Amodei is the CEO of Anthropic",
+    "Daniela Amodei is the President and co-founder of Anthropic",
+    "Anthropic is a private company with no publicly traded stock",
+    "Anthropic was founded in 2021 by former OpenAI employees",
+    "Anthropic focuses on AI safety as a core part of its mission",
+    "Amazon is a major investor and cloud partner of Anthropic"
+  ],
+
+  "expected_patterns": [
+    "mentions Anthropic as a private company",
+    "mentions Claude as Anthropic primary AI model",
+    "mentions Anthropic valuation from most recent funding round",
+    "mentions AI safety as a core focus or differentiator",
+    "mentions competition with OpenAI Google or other AI labs",
+    "mentions Amazon or Google as key investors or partners"
+  ],
+
+  "forbidden_content": [
+    "Anthropic is publicly traded",
+    "Anthropic was founded by Elon Musk",
+    "Anthropic has no connection to OpenAI",
+    "Anthropic has a stock ticker",
+    "Dario Amodei is not the CEO"
+  ],
+
+  "quality_thresholds": {
+    "min_faithfulness": 0.75,
+    "min_relevancy": 0.70,
+    "min_citation_coverage": 0.30,
+    "min_word_count": 250,
+    "min_citations": 3
+  },
+
+  "sentiment_range": [-0.1, 0.7],
+  "notes": "Tests normalizer on AI company names and private company handling. Must not fabricate ticker or public valuation. Key facts to verify: founded by ex-OpenAI team, AI safety mission, Amazon partnership, Claude models. Do not confuse with OpenAI. IPO planned for late 2026 is a relevant topic."
+}

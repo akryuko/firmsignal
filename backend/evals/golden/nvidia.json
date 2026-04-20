@@ -1,0 +1,42 @@
+{
+  "company": "Nvidia",
+  "ticker": "NVDA",
+  "is_public": true,
+  "ceo": "Jensen Huang",
+  "sector": "Technology",
+  "industry": "Semiconductors",
+  "last_verified": "2026-04-17",
+
+  "stable_facts": [
+    "Jensen Huang is the founder and CEO of Nvidia",
+    "Nvidia is headquartered in Santa Clara California",
+    "Nvidia designs graphics processing units and AI chips"
+  ],
+
+"expected_patterns": [
+  "mentions Nvidia revenue or quarterly earnings figure",
+  "mentions Blackwell or next generation AI chip architecture",
+  "mentions data center revenue as primary business segment",
+  "mentions US export controls or China restrictions as a risk",
+  "mentions competition from alternative chips or hyperscaler custom silicon",
+  "includes numbered citations linking to sources"
+],
+
+  "forbidden_content": [
+    "Jensen Huang stepped down or resigned",
+    "Nvidia is a private company",
+    "Nvidia primarily makes gaming hardware with no AI business",
+    "Nvidia filed for bankruptcy"
+  ],
+
+  "quality_thresholds": {
+    "min_faithfulness": 0.80,
+    "min_relevancy": 0.75,
+    "min_citation_coverage": 0.30,
+    "min_word_count": 350,
+    "min_citations": 4
+  },
+
+  "sentiment_range": [0.1, 0.9],
+  "notes": "Nvidia is the dominant AI infrastructure company. High positive sentiment expected. Key risks are US-China export controls and hyperscaler custom chip development. Brief must mention AI data center as core business."
+}
