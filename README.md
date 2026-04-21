@@ -116,7 +116,7 @@ Every pipeline run produces a unified LangSmith trace showing all six nodes — 
      6. Uncomment the line below
      ============================================================ -->
 
-[LangSmith unified pipeline trace](docs/langsmith_trace.png)
+![LangSmith unified pipeline trace](docs/langsmith_trace.png)
 
 The `hitl` node latency shows how long the human spent on the review screen — a detail that surfaces in every production trace. Eval runs are isolated to a separate `firmsignal-evals` LangSmith project so production traces stay clean.
 
