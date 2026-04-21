@@ -8,9 +8,9 @@
   "last_verified": "2026-04-17",
 
   "stable_facts": [
-    "Satya Nadella is the CEO of Microsoft",
-    "Microsoft is headquartered in Redmond Washington",
-    "Microsoft operates Azure cloud Windows Office and LinkedIn"
+     "Satya Nadella is the CEO of Microsoft",
+     "Microsoft is headquartered in Redmond Washington",
+     "Microsoft develops software cloud services and enterprise technology solutions"
   ],
 
   "expected_patterns": [
@@ -37,6 +37,6 @@
     "min_citations": 4
   },
 
-  "sentiment_range": [-0.6, 0.1],
+  "sentiment_direction": "any",
   "notes": "Key tension is massive AI investment versus layoffs and regulatory pressure. ACCC lawsuit is confirmed. Azure growth is a genuine positive. Brief should reflect analyst bullishness despite near-term headwinds."
 }

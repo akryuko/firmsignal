@@ -37,6 +37,6 @@
     "min_citations": 4
   },
 
-  "sentiment_range": [0.0, 0.7],
+  "sentiment_direction": "positive",
   "notes": "Tests financial sector coverage. JPMorgan is genuinely strong financially — Skeptic should reflect neutral-to-positive sentiment. Primary risks are macroeconomic uncertainty and regulatory capital requirements not internal failures."
 }

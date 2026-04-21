@@ -1,3 +1,4 @@
+import json
 import re
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -31,6 +32,16 @@ class ScoutOutput(BaseModel):
         description="Other significant events: acquisitions, launches, controversies",
     )
     research_date: str = Field(description="Date research was conducted (YYYY-MM-DD)")
+
+    @field_validator("news_items", mode="before")
+    @classmethod
+    def _coerce_news_items(cls, v: object) -> object:
+        if not isinstance(v, str):
+            return v
+        try:
+            return json.loads(v)
+        except Exception:
+            return []
 
 
 # ─── Placeholder models for Accountant + Skeptic (you'll fill these in later) ─

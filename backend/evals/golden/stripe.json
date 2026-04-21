@@ -37,6 +37,6 @@
     "min_citations": 3
   },
 
-  "sentiment_range": [-0.2, 0.7],
+  "sentiment_direction": "positive",
   "notes": "Primary test for private company handling. No stock price chart or market cap should appear. Accountant should gracefully report no public data. Normalizer must not fabricate a ticker symbol."
 }

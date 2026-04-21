@@ -1,0 +1,245 @@
+{
+  "run_at": "2026-04-21T11:36:48.296637",
+  "total_companies": 10,
+  "successful": 9,
+  "failed": 1,
+  "avg_score": 86.1,
+  "avg_faithfulness": 0.883,
+  "avg_relevancy": 0.868,
+  "deepeval_ran": true,
+  "results": [
+    {
+      "company": "nvidia",
+      "status": "success",
+      "overall_score": 96.3,
+      "grade": "A",
+      "component_scores": {
+        "forbidden_content": 1.0,
+        "patterns": 1.0,
+        "citations": 1.0,
+        "stable_facts": 1.0,
+        "structure": 1.0,
+        "sentiment": 1.0,
+        "source_quality": 0.96,
+        "faithfulness": 0.862,
+        "answer_relevancy": 0.811
+      },
+      "deepeval_included": true,
+      "deepeval_scores": {
+        "faithfulness": 0.862,
+        "answer_relevancy": 0.811
+      },
+      "pipeline_time_s": 89.2,
+      "word_count": 1009,
+      "citations_used": 7
+    },
+    {
+      "company": "boeing",
+      "status": "success",
+      "overall_score": 88.2,
+      "grade": "B",
+      "component_scores": {
+        "forbidden_content": 1.0,
+        "patterns": 0.833,
+        "citations": 1.0,
+        "stable_facts": 0.333,
+        "structure": 1.0,
+        "sentiment": 1.0,
+        "source_quality": 0.963,
+        "faithfulness": 0.852,
+        "answer_relevancy": 0.935
+      },
+      "deepeval_included": true,
+      "deepeval_scores": {
+        "faithfulness": 0.852,
+        "answer_relevancy": 0.935
+      },
+      "pipeline_time_s": 58.9,
+      "word_count": 788,
+      "citations_used": 15
+    },
+    {
+      "company": "apple",
+      "status": "agent_error",
+      "error": "Skeptic failed: ValidationError: 1 validation error for SkepticOutput\nsummary\n  Field required [type=missing, input_value={'company_name': 'Apple',... 'sources_analyzed': 10}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing",
+      "overall_score": 0,
+      "grade": "F"
+    },
+    {
+      "company": "microsoft",
+      "status": "success",
+      "overall_score": 73.0,
+      "grade": "C",
+      "component_scores": {
+        "forbidden_content": 1.0,
+        "patterns": 0.5,
+        "citations": 1.0,
+        "stable_facts": 0.0,
+        "structure": 1.0,
+        "sentiment": 0.0,
+        "source_quality": 0.95,
+        "faithfulness": 0.895,
+        "answer_relevancy": 0.706
+      },
+      "deepeval_included": true,
+      "deepeval_scores": {
+        "faithfulness": 0.895,
+        "answer_relevancy": 0.706
+      },
+      "pipeline_time_s": 59.8,
+      "word_count": 771,
+      "citations_used": 9
+    },
+    {
+      "company": "stripe",
+      "status": "success",
+      "overall_score": 88.0,
+      "grade": "B",
+      "component_scores": {
+        "forbidden_content": 1.0,
+        "patterns": 0.6,
+        "citations": 1.0,
+        "stable_facts": 0.75,
+        "structure": 1.0,
+        "sentiment": 1.0,
+        "source_quality": 0.964,
+        "faithfulness": 0.875,
+        "answer_relevancy": 0.818
+      },
+      "deepeval_included": true,
+      "deepeval_scores": {
+        "faithfulness": 0.875,
+        "answer_relevancy": 0.818
+      },
+      "pipeline_time_s": 54.8,
+      "word_count": 821,
+      "citations_used": 8
+    },
+    {
+      "company": "openai",
+      "status": "success",
+      "overall_score": 86.6,
+      "grade": "B",
+      "component_scores": {
+        "forbidden_content": 1.0,
+        "patterns": 0.5,
+        "citations": 1.0,
+        "stable_facts": 0.75,
+        "structure": 0.8,
+        "sentiment": 1.0,
+        "source_quality": 0.964,
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.833
+      },
+      "deepeval_included": true,
+      "deepeval_scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.833
+      },
+      "pipeline_time_s": 76.9,
+      "word_count": 891,
+      "citations_used": 10
+    },
+    {
+      "company": "tesla",
+      "status": "success",
+      "overall_score": 90.7,
+      "grade": "A",
+      "component_scores": {
+        "forbidden_content": 1.0,
+        "patterns": 0.5,
+        "citations": 1.0,
+        "stable_facts": 1.0,
+        "structure": 1.0,
+        "sentiment": 1.0,
+        "source_quality": 1.0,
+        "faithfulness": 0.885,
+        "answer_relevancy": 0.956
+      },
+      "deepeval_included": true,
+      "deepeval_scores": {
+        "faithfulness": 0.885,
+        "answer_relevancy": 0.956
+      },
+      "pipeline_time_s": 69.0,
+      "word_count": 915,
+      "citations_used": 11
+    },
+    {
+      "company": "jpmorgan",
+      "status": "success",
+      "overall_score": 78.5,
+      "grade": "C",
+      "component_scores": {
+        "forbidden_content": 1.0,
+        "patterns": 0.5,
+        "citations": 1.0,
+        "stable_facts": 0.333,
+        "structure": 1.0,
+        "sentiment": 0.0,
+        "source_quality": 1.0,
+        "faithfulness": 0.913,
+        "answer_relevancy": 0.875
+      },
+      "deepeval_included": true,
+      "deepeval_scores": {
+        "faithfulness": 0.913,
+        "answer_relevancy": 0.875
+      },
+      "pipeline_time_s": 61.7,
+      "word_count": 589,
+      "citations_used": 8
+    },
+    {
+      "company": "airbnb",
+      "status": "success",
+      "overall_score": 83.6,
+      "grade": "B",
+      "component_scores": {
+        "forbidden_content": 1.0,
+        "patterns": 0.833,
+        "citations": 0.5,
+        "stable_facts": 0.667,
+        "structure": 1.0,
+        "sentiment": 1.0,
+        "source_quality": 0.833,
+        "faithfulness": 0.885,
+        "answer_relevancy": 0.917
+      },
+      "deepeval_included": true,
+      "deepeval_scores": {
+        "faithfulness": 0.885,
+        "answer_relevancy": 0.917
+      },
+      "pipeline_time_s": 63.5,
+      "word_count": 824,
+      "citations_used": 9
+    },
+    {
+      "company": "anthropic",
+      "status": "success",
+      "overall_score": 90.3,
+      "grade": "A",
+      "component_scores": {
+        "forbidden_content": 1.0,
+        "patterns": 1.0,
+        "citations": 1.0,
+        "stable_facts": 0.833,
+        "structure": 1.0,
+        "sentiment": 0.0,
+        "source_quality": 1.0,
+        "faithfulness": 0.778,
+        "answer_relevancy": 0.96
+      },
+      "deepeval_included": true,
+      "deepeval_scores": {
+        "faithfulness": 0.778,
+        "answer_relevancy": 0.96
+      },
+      "pipeline_time_s": 65.1,
+      "word_count": 815,
+      "citations_used": 12
+    }
+  ],
+  "readme_summary": "## Eval Results \u2014 April 2026\n\n| Metric | Score |\n|---|---|\n| Overall average | 86.1/100 |\n| Companies passing (\u226570) | 9/10 |\n| Faithfulness (DeepEval) | 88% |\n| Answer Relevancy (DeepEval) | 87% |\n| Avg pipeline time | 67s |\n| Avg words per brief | 825 |\n| Avg citations used | 9.9 |\n| Private company handling | 0/3 graceful |"
+}

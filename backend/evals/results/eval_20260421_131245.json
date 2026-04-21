@@ -1,0 +1,20 @@
+{
+  "run_at": "2026-04-21T13:12:44.438736",
+  "total_companies": 1,
+  "successful": 0,
+  "failed": 1,
+  "avg_score": 0,
+  "avg_faithfulness": null,
+  "avg_relevancy": null,
+  "deepeval_ran": false,
+  "results": [
+    {
+      "company": "nvidia",
+      "status": "agent_error",
+      "error": "Skeptic failed: ValidationError: 1 validation error for SkepticOutput\nsummary\n  Field required [type=missing, input_value={'company_name': 'Nvidia'..., 'sources_analyzed': 9}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing",
+      "overall_score": 0,
+      "grade": "F"
+    }
+  ],
+  "readme_summary": ""
+}

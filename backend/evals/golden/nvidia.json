@@ -37,6 +37,6 @@
     "min_citations": 4
   },
 
-  "sentiment_range": [0.1, 0.9],
+  "sentiment_direction": "positive",
   "notes": "Nvidia is the dominant AI infrastructure company. High positive sentiment expected. Key risks are US-China export controls and hyperscaler custom chip development. Brief must mention AI data center as core business."
 }

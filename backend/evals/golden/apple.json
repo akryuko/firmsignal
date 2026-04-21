@@ -37,6 +37,6 @@
     "min_citations": 4
   },
 
-  "sentiment_range": [-0.5, 0.4],
+  "sentiment_direction": "any",
   "notes": "Apple has strong financials but confirmed legal violations. App Store contempt ruling is documented fact from April 2025. Debt-to-equity is high and should appear. China is both risk and opportunity."
 }

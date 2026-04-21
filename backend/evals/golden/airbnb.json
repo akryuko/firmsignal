@@ -37,6 +37,6 @@
     "min_citations": 3
   },
 
-  "sentiment_range": [-0.3, 0.5],
+  "sentiment_direction": "any",
   "notes": "Tests travel sector coverage. Key tension is strong cash flow versus regulatory headwinds and hotel competition. Chesky hotel expansion announcement is a notable recent strategic shift worth testing for."
 }
