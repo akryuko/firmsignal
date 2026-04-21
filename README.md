@@ -330,3 +330,14 @@ firmsignal/
   README.md
   .gitignore
 ```
+
+## Tests
+
+```bash
+cd backend
+uv run pytest tests/ -v
+```
+
+28 tests across three layers — unit (validation, source quality,
+cache, eval scoring) and API (all endpoints with mocked pipeline).
+All tests run offline with no external API calls.
