@@ -153,22 +153,28 @@ Automated eval suite across 10 gold standard companies using a two-layer approac
 - Faithfulness — did the Synthesizer hallucinate facts not in context?
 - Answer Relevancy — does the brief answer the investor's question?
 
-**Results — April 2026:**
+
+
+## Eval Results — April 2026
 
 | Metric | Score |
 |---|---|
-| Overall average | 76.2 / 100 |
-| Companies passing (≥70) | 8 / 10 |
-| No hallucinations (forbidden content) | 10 / 10 |
-| Source quality (trusted domains only) | 100% |
-| Private company handling | 3 / 3 graceful |
-| Avg pipeline time | 74s |
-| Avg words per brief | 820 |
-| Avg citations used | 9.4 |
+| Overall average | 87.6 / 100 |
+| Companies passing (≥70) | 10 / 10 |
+| Faithfulness (DeepEval) | 95% |
+| Answer Relevancy (DeepEval) | 89.8% |
+| Avg pipeline time | 57s |
+| Avg words per brief | 812 |
+| Avg citations used | 10.2 |
 
 > Update these numbers after running: `cd backend && uv run python -m evals.run_evals`
 
 **Golden dataset:** 10 companies covering public/private, high/low sentiment, different sectors (tech, aerospace, finance, travel). Each golden file contains stable facts, expected patterns, forbidden content checks, and quality thresholds. Files are in `backend/evals/golden/` and should be re-verified every 90 days (`last_verified` field tracks this).
+
+**Results — April 2026** (full experiment tracked in LangSmith):
+
+![LangSmith Experiments tab showing eval scores across 10 companies](docs/eval_results.png)
+
 
 ---
 
@@ -176,12 +182,12 @@ Automated eval suite across 10 gold standard companies using a two-layer approac
 
 | Component | Cost |
 |---|---|
-| Scout — 2 Tavily searches | ~$0.010 |
+| Scout — 2 Tavily searches | ~$0.025 |
 | Accountant — yfinance | free |
 | Skeptic — 3 Tavily searches | ~$0.015 |
-| Normalizer + Scout + Skeptic — Claude Haiku | ~$0.015 |
-| Synthesizer — Claude Sonnet | ~$0.040 |
-| **Total per report** | **~$0.08** |
+| Normalizer + Scout + Skeptic — Claude Haiku | ~$0.040 |
+| Synthesizer — Claude Sonnet | ~$0.020 |
+| **Total per report** | **~$0.060** |
 
 Redis semantic caching reduces Tavily costs by ~60% on repeat queries for the same company within 24 hours.
 
@@ -338,6 +344,6 @@ cd backend
 uv run pytest tests/ -v
 ```
 
-28 tests across three layers — unit (validation, source quality,
+38 tests across three layers — unit (validation, source quality,
 cache, eval scoring) and API (all endpoints with mocked pipeline).
 All tests run offline with no external API calls.
