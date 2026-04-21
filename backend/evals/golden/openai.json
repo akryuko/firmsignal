@@ -38,6 +38,6 @@
     "min_citations": 3
   },
 
-  "sentiment_range": [-0.3, 0.6],
+  "sentiment_direction": "any",
   "notes": "Sam Altman was temporarily removed in November 2023 but reinstated within days — agent must not report him as permanently removed. Key risks are competition from Anthropic and projected losses despite high revenue. High valuation relative to revenue is a financial risk."
 }

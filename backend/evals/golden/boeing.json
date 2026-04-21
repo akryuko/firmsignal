@@ -8,7 +8,6 @@
   "last_verified": "2026-04-17",
 
   "stable_facts": [
-    "Kelly Ortberg is the CEO and President of Boeing",
     "Boeing is headquartered in Arlington Virginia",
     "Boeing manufactures commercial aircraft and defense systems"
   ],
@@ -37,6 +36,6 @@
     "min_citations": 4
   },
 
-  "sentiment_range": [-0.9, -0.2],
+  "sentiment_direction": "negative",
   "notes": "Boeing has severe ongoing legal and operational risks. Negative sentiment strongly expected. DOJ guilty plea is confirmed public record. Ortberg joined August 8 2024. Record backlog is a genuine positive signal."
 }

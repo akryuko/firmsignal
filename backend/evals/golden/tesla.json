@@ -37,6 +37,6 @@
     "min_citations": 4
   },
 
-  "sentiment_range": [-0.7, 0.2],
+  "sentiment_direction": "negative",
   "notes": "Revenue declined for first time in 2025. xAI investment by Tesla is a governance concern. Musk political activities are a documented reputational risk. Robotaxi launch in Bay Area is a genuine positive. High sentiment variance — Skeptic calibration is key test here."
 }

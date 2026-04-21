@@ -41,6 +41,6 @@
     "min_citations": 3
   },
 
-  "sentiment_range": [-0.1, 0.7],
+  "sentiment_direction": "positive",
   "notes": "Tests normalizer on AI company names and private company handling. Must not fabricate ticker or public valuation. Key facts to verify: founded by ex-OpenAI team, AI safety mission, Amazon partnership, Claude models. Do not confuse with OpenAI. IPO planned for late 2026 is a relevant topic."
 }

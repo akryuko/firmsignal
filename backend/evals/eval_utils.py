@@ -210,23 +210,25 @@ def check_citation_coverage(brief: str, golden: dict) -> dict:
 # ─── Check 5: Sentiment calibration ───────────────────────────────────────────
 
 def check_sentiment_range(sentiment_score: float, golden: dict) -> dict:
-    """
-    Checks that the Skeptic's sentiment score falls within
-    the expected range for this company.
-    """
-    expected_range = golden.get("sentiment_range", [-1.0, 1.0])
-    low, high = expected_range
+    direction = golden.get("sentiment_direction", "any")
 
-    in_range = low <= sentiment_score <= high
+    if direction == "any":
+        passed = True
+    elif direction == "positive":
+        passed = sentiment_score > 0.0
+    elif direction == "negative":
+        passed = sentiment_score < 0.0
+    elif direction == "neutral":
+        passed = -0.3 <= sentiment_score <= 0.3
+    else:
+        passed = True
 
     return {
-        "score": 1.0 if in_range else 0.0,
+        "score":     1.0 if passed else 0.0,
         "sentiment_score": sentiment_score,
-        "expected_range": expected_range,
-        "passed": in_range,
-        "deviation": max(0, low - sentiment_score, sentiment_score - high),
+        "expected_direction": direction,
+        "passed": passed,
     }
-
 
 # ─── Check 6: Private company handling ────────────────────────────────────────
 

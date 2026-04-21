@@ -214,10 +214,10 @@ def run_single_eval(
           f"({results['citations']['unique_citations_used']} unique)")
 
     results["sentiment"] = check_sentiment_range(sentiment_score, golden)
-    expected = golden.get("sentiment_range", [-1, 1])
+    direction = results["sentiment"].get("expected_direction", "any")
     status = "PASS" if results["sentiment"]["passed"] else "FAIL"
     print(f"     sentiment:        {status} — score {sentiment_score:+.2f} "
-          f"(expected {expected[0]} to {expected[1]})")
+          f"(expected {direction})")
 
     results["structure"] = check_structure(brief, golden)
     print(f"     structure:        {results['structure']['section_score']:.0%} "
@@ -510,6 +510,16 @@ def main():
 
     companies = [args.company] if args.company else COMPANIES
 
+    experiment_prefix = f"firmsignal-{datetime.now().strftime('%Y%m%d-%H%M')}"
+
+    langsmith_client = None
+    try:
+        from langsmith import Client
+        langsmith_client = Client()
+        print(f"LangSmith ready — experiment: {experiment_prefix}")
+    except Exception as e:
+        print(f"LangSmith unavailable: {e}")
+
     print(f"\nFirmSignal Eval Suite")
     print(f"Companies: {', '.join(companies)}")
     print(f"Mode: {'fast (no LLM pattern checks)' if args.fast else 'full'}")
@@ -521,6 +531,19 @@ def main():
         all_results.append(result)
 
     summary = print_summary(all_results)
+
+    if langsmith_client:
+        try:
+            from evals.langsmith_dataset import log_experiment_to_langsmith
+            log_experiment_to_langsmith(
+                client=langsmith_client,
+                dataset_name="firmsignal-golden-10",
+                all_results=all_results,
+                experiment_prefix=experiment_prefix,
+            )
+            print("LangSmith experiment logged successfully")
+        except Exception as e:
+            print(f"LangSmith experiment failed (non-fatal): {e}")
 
     # Save results
     output_path = RESULTS_DIR / "latest.json"

@@ -1,0 +1,51 @@
+{
+  "run_at": "2026-04-21T13:28:57.331392",
+  "total_companies": 1,
+  "successful": 1,
+  "failed": 0,
+  "avg_score": 97.5,
+  "avg_faithfulness": 0.923,
+  "avg_relevancy": 0.867,
+  "deepeval_ran": true,
+  "results": [
+    {
+      "company": "nvidia",
+      "status": "success",
+      "overall_score": 97.5,
+      "grade": "A",
+      "component_scores": {
+        "forbidden_content": 1.0,
+        "patterns": 1.0,
+        "citations": 1.0,
+        "stable_facts": 1.0,
+        "structure": 1.0,
+        "sentiment": 1.0,
+        "source_quality": 0.96,
+        "faithfulness": 0.923,
+        "answer_relevancy": 0.867
+      },
+      "deepeval_included": true,
+      "deepeval_scores": {
+        "faithfulness": 0.923,
+        "answer_relevancy": 0.867
+      },
+      "pipeline_time_s": 63.8,
+      "word_count": 895,
+      "citations_used": 10,
+      "prompt_tokens": 18130,
+      "completion_tokens": 4170,
+      "total_tokens": 22300,
+      "token_by_model": {
+        "claude-haiku-4-5-20251001": {
+          "input": 13317,
+          "output": 2744
+        },
+        "claude-sonnet-4-20250514": {
+          "input": 4813,
+          "output": 1426
+        }
+      }
+    }
+  ],
+  "readme_summary": "## Eval Results \u2014 April 2026\n\n| Metric | Score |\n|---|---|\n| Overall average | 97.5/100 |\n| Companies passing (\u226570) | 1/1 |\n| Faithfulness (DeepEval) | 92% |\n| Answer Relevancy (DeepEval) | 87% |\n| Avg pipeline time | 64s |\n| Avg words per brief | 895 |\n| Avg citations used | 10.0 |\n| Private company handling | 0/3 graceful |"
+}

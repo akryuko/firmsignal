@@ -1,0 +1,38 @@
+{
+  "run_at": "2026-04-21T08:40:52.058150",
+  "total_companies": 1,
+  "successful": 1,
+  "failed": 0,
+  "avg_score": 98.5,
+  "avg_faithfulness": 0.967,
+  "avg_relevancy": 0.889,
+  "deepeval_ran": true,
+  "results": [
+    {
+      "company": "nvidia",
+      "status": "success",
+      "overall_score": 98.5,
+      "grade": "A",
+      "component_scores": {
+        "forbidden_content": 1.0,
+        "patterns": 1.0,
+        "citations": 1.0,
+        "stable_facts": 1.0,
+        "structure": 1.0,
+        "sentiment": 1.0,
+        "source_quality": 1.0,
+        "faithfulness": 0.967,
+        "answer_relevancy": 0.889
+      },
+      "deepeval_included": true,
+      "deepeval_scores": {
+        "faithfulness": 0.967,
+        "answer_relevancy": 0.889
+      },
+      "pipeline_time_s": 62.4,
+      "word_count": 828,
+      "citations_used": 13
+    }
+  ],
+  "readme_summary": "## Eval Results \u2014 April 2026\n\n| Metric | Score |\n|---|---|\n| Overall average | 98.5/100 |\n| Companies passing (\u226570) | 1/1 |\n| Faithfulness (DeepEval) | 97% |\n| Answer Relevancy (DeepEval) | 89% |\n| Avg pipeline time | 62s |\n| Avg words per brief | 828 |\n| Avg citations used | 13.0 |\n| Private company handling | 0/3 graceful |"
+}
