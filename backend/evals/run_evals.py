@@ -116,41 +116,51 @@ def run_single_eval(
 
     start_time = time.time()
 
-    # Phase 1: Run pipeline until HITL pause
+    # Wrap both graph invocations in a single LangSmith trace (no-op if unavailable)
+    try:
+        from langsmith import traceable as _traceable
+        _ls_wrap = _traceable(
+            name=f"FirmSignal — {golden['company']}",
+            tags=["eval", company_slug, golden["company"].lower()],
+            metadata={
+                "company":      golden["company"],
+                "company_slug": company_slug,
+                "eval_mode":    True,
+                "run_id":       run_id,
+            },
+        )
+    except Exception:
+        _ls_wrap = lambda f: f
+
+    def _run_pipeline():
+        graph.invoke(initial_state, config=config)
+        state_check = graph.get_state(config)
+        if state_check.values.get("error"):
+            raise RuntimeError(state_check.values["error"])
+        print(f"  [2/3] Auto-approving HITL...")
+        return graph.invoke(
+            Command(resume={"approved": True, "edits": None}),
+            config=config,
+        )
+
+    run_full_pipeline = _ls_wrap(_run_pipeline)
+
+    # Phase 1 & 2: Run pipeline then auto-approve HITL under one trace
     print(f"  [1/3] Running pipeline...")
     try:
-        graph.invoke(initial_state, config=config)
-    except Exception as e:
+        final = run_full_pipeline()
+    except RuntimeError as e:
         return {
             "company": company_slug,
-            "status": "pipeline_error",
+            "status": "agent_error",
             "error": str(e),
             "overall_score": 0,
             "grade": "F",
         }
-
-    # Check for errors in state
-    state = graph.get_state(config)
-    if state.values.get("error"):
-        return {
-            "company": company_slug,
-            "status": "agent_error",
-            "error": state.values["error"],
-            "overall_score": 0,
-            "grade": "F",
-        }
-
-    # Phase 2: Auto-approve HITL
-    print(f"  [2/3] Auto-approving HITL...")
-    try:
-        final = graph.invoke(
-            Command(resume={"approved": True, "edits": None}),
-            config=config,
-        )
     except Exception as e:
         return {
             "company": company_slug,
-            "status": "synthesis_error",
+            "status": "pipeline_error",
             "error": str(e),
             "overall_score": 0,
             "grade": "F",

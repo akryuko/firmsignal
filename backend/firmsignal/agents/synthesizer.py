@@ -1,4 +1,5 @@
 import concurrent.futures
+import contextvars
 import re
 from datetime import datetime
 
@@ -320,7 +321,8 @@ def synthesizer_node(state: FirmState) -> dict:
         messages = [SystemMessage(content=_SYSTEM), HumanMessage(content=context)]
 
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-        future = executor.submit(_invoke_llm, llm, messages)
+        ctx = contextvars.copy_context()
+        future = executor.submit(ctx.run, _invoke_llm, llm, messages)
         executor.shutdown(wait=False)
         try:
             response = future.result(timeout=90)

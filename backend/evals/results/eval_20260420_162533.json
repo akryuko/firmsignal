@@ -1,0 +1,38 @@
+{
+  "run_at": "2026-04-20T16:25:33.706040",
+  "total_companies": 1,
+  "successful": 1,
+  "failed": 0,
+  "avg_score": 94.5,
+  "avg_faithfulness": 0.917,
+  "avg_relevancy": 0.82,
+  "deepeval_ran": true,
+  "results": [
+    {
+      "company": "stripe",
+      "status": "success",
+      "overall_score": 94.5,
+      "grade": "A",
+      "component_scores": {
+        "forbidden_content": 1.0,
+        "patterns": 1.0,
+        "citations": 1.0,
+        "stable_facts": 0.75,
+        "structure": 1.0,
+        "sentiment": 1.0,
+        "source_quality": 0.964,
+        "faithfulness": 0.917,
+        "answer_relevancy": 0.82
+      },
+      "deepeval_included": true,
+      "deepeval_scores": {
+        "faithfulness": 0.917,
+        "answer_relevancy": 0.82
+      },
+      "pipeline_time_s": 52.1,
+      "word_count": 807,
+      "citations_used": 12
+    }
+  ],
+  "readme_summary": "## Eval Results \u2014 April 2026\n\n| Metric | Score |\n|---|---|\n| Overall average | 94.5/100 |\n| Companies passing (\u226570) | 1/1 |\n| Faithfulness (DeepEval) | 92% |\n| Answer Relevancy (DeepEval) | 82% |\n| Avg pipeline time | 52s |\n| Avg words per brief | 807 |\n| Avg citations used | 12.0 |\n| Private company handling | 0/3 graceful |"
+}

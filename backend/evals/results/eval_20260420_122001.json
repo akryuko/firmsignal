@@ -1,0 +1,38 @@
+{
+  "run_at": "2026-04-20T12:20:01.311364",
+  "total_companies": 1,
+  "successful": 1,
+  "failed": 0,
+  "avg_score": 87.6,
+  "avg_faithfulness": 0.688,
+  "avg_relevancy": 0.889,
+  "deepeval_ran": true,
+  "results": [
+    {
+      "company": "tesla",
+      "status": "success",
+      "overall_score": 87.6,
+      "grade": "B",
+      "component_scores": {
+        "forbidden_content": 1.0,
+        "patterns": 0.5,
+        "citations": 1.0,
+        "stable_facts": 1.0,
+        "structure": 1.0,
+        "sentiment": 1.0,
+        "source_quality": 1.0,
+        "faithfulness": 0.688,
+        "answer_relevancy": 0.889
+      },
+      "deepeval_included": true,
+      "deepeval_scores": {
+        "faithfulness": 0.688,
+        "answer_relevancy": 0.889
+      },
+      "pipeline_time_s": 89.1,
+      "word_count": 992,
+      "citations_used": 11
+    }
+  ],
+  "readme_summary": "## Eval Results \u2014 April 2026\n\n| Metric | Score |\n|---|---|\n| Overall average | 87.6/100 |\n| Companies passing (\u226570) | 1/1 |\n| Faithfulness (DeepEval) | 69% |\n| Answer Relevancy (DeepEval) | 89% |\n| Avg pipeline time | 89s |\n| Avg words per brief | 992 |\n| Avg citations used | 11.0 |\n| Private company handling | 0/3 graceful |"
+}
