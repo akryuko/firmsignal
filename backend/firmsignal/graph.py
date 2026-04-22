@@ -37,8 +37,10 @@ def create_graph():
 
     graph.set_entry_point("normalizer")
     graph.add_edge("normalizer",  "scout")
-    graph.add_edge("scout",       "accountant")
-    graph.add_edge("accountant",  "skeptic")
+    graph.add_edge("normalizer",  "accountant")
+    graph.add_edge("normalizer",  "skeptic")
+    graph.add_edge("scout",       "hitl")
+    graph.add_edge("accountant",  "hitl")
     graph.add_edge("skeptic",     "hitl")
     graph.add_conditional_edges("hitl", _route_after_hitl)
     graph.add_edge("synthesizer", END)

@@ -1,0 +1,263 @@
+{
+  "run_at": "2026-04-21T15:23:09.872482",
+  "total_companies": 10,
+  "successful": 10,
+  "failed": 0,
+  "avg_score": 87.6,
+  "avg_faithfulness": 0.95,
+  "avg_relevancy": 0.898,
+  "deepeval_ran": true,
+  "results": [
+    {
+      "company": "nvidia",
+      "status": "success",
+      "overall_score": 95.8,
+      "grade": "A",
+      "component_scores": {
+        "forbidden_content": 1.0,
+        "patterns": 0.833,
+        "citations": 1.0,
+        "stable_facts": 1.0,
+        "structure": 1.0,
+        "sentiment": 1.0,
+        "source_quality": 0.96,
+        "faithfulness": 0.933,
+        "answer_relevancy": 0.931
+      },
+      "deepeval_included": true,
+      "deepeval_scores": {
+        "faithfulness": 0.933,
+        "answer_relevancy": 0.931
+      },
+      "pipeline_time_s": 60.9,
+      "word_count": 812,
+      "citations_used": 8
+    },
+    {
+      "company": "boeing",
+      "status": "success",
+      "overall_score": 90.9,
+      "grade": "A",
+      "component_scores": {
+        "forbidden_content": 1.0,
+        "patterns": 0.833,
+        "citations": 1.0,
+        "stable_facts": 0.5,
+        "structure": 1.0,
+        "sentiment": 1.0,
+        "source_quality": 0.963,
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.857
+      },
+      "deepeval_included": true,
+      "deepeval_scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.857
+      },
+      "pipeline_time_s": 54.0,
+      "word_count": 716,
+      "citations_used": 13
+    },
+    {
+      "company": "apple",
+      "status": "success",
+      "overall_score": 89.8,
+      "grade": "B",
+      "component_scores": {
+        "forbidden_content": 1.0,
+        "patterns": 0.667,
+        "citations": 1.0,
+        "stable_facts": 0.667,
+        "structure": 1.0,
+        "sentiment": 1.0,
+        "source_quality": 0.923,
+        "faithfulness": 0.935,
+        "answer_relevancy": 0.925
+      },
+      "deepeval_included": true,
+      "deepeval_scores": {
+        "faithfulness": 0.935,
+        "answer_relevancy": 0.925
+      },
+      "pipeline_time_s": 67.7,
+      "word_count": 941,
+      "citations_used": 10
+    },
+    {
+      "company": "microsoft",
+      "status": "success",
+      "overall_score": 79.3,
+      "grade": "C",
+      "component_scores": {
+        "forbidden_content": 1.0,
+        "patterns": 0.5,
+        "citations": 0.5,
+        "stable_facts": 0.667,
+        "structure": 1.0,
+        "sentiment": 1.0,
+        "source_quality": 0.95,
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.791
+      },
+      "deepeval_included": true,
+      "deepeval_scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.791
+      },
+      "pipeline_time_s": 60.5,
+      "word_count": 834,
+      "citations_used": 7
+    },
+    {
+      "company": "stripe",
+      "status": "success",
+      "overall_score": 85.6,
+      "grade": "B",
+      "component_scores": {
+        "forbidden_content": 1.0,
+        "patterns": 0.6,
+        "citations": 1.0,
+        "stable_facts": 0.75,
+        "structure": 1.0,
+        "sentiment": 0.0,
+        "source_quality": 0.964,
+        "faithfulness": 0.944,
+        "answer_relevancy": 1.0
+      },
+      "deepeval_included": true,
+      "deepeval_scores": {
+        "faithfulness": 0.944,
+        "answer_relevancy": 1.0
+      },
+      "pipeline_time_s": 57.0,
+      "word_count": 868,
+      "citations_used": 13
+    },
+    {
+      "company": "openai",
+      "status": "success",
+      "overall_score": 85.3,
+      "grade": "B",
+      "component_scores": {
+        "forbidden_content": 1.0,
+        "patterns": 0.5,
+        "citations": 1.0,
+        "stable_facts": 0.75,
+        "structure": 0.8,
+        "sentiment": 1.0,
+        "source_quality": 0.964,
+        "faithfulness": 0.87,
+        "answer_relevancy": 0.861
+      },
+      "deepeval_included": true,
+      "deepeval_scores": {
+        "faithfulness": 0.87,
+        "answer_relevancy": 0.861
+      },
+      "pipeline_time_s": 60.9,
+      "word_count": 954,
+      "citations_used": 13
+    },
+    {
+      "company": "tesla",
+      "status": "success",
+      "overall_score": 91.2,
+      "grade": "A",
+      "component_scores": {
+        "forbidden_content": 1.0,
+        "patterns": 0.5,
+        "citations": 1.0,
+        "stable_facts": 1.0,
+        "structure": 1.0,
+        "sentiment": 1.0,
+        "source_quality": 1.0,
+        "faithfulness": 0.95,
+        "answer_relevancy": 0.925
+      },
+      "deepeval_included": true,
+      "deepeval_scores": {
+        "faithfulness": 0.95,
+        "answer_relevancy": 0.925
+      },
+      "pipeline_time_s": 50.9,
+      "word_count": 723,
+      "citations_used": 9
+    },
+    {
+      "company": "jpmorgan",
+      "status": "success",
+      "overall_score": 80.5,
+      "grade": "B",
+      "component_scores": {
+        "forbidden_content": 1.0,
+        "patterns": 0.667,
+        "citations": 1.0,
+        "stable_facts": 0.333,
+        "structure": 1.0,
+        "sentiment": 0.0,
+        "source_quality": 1.0,
+        "faithfulness": 0.905,
+        "answer_relevancy": 0.833
+      },
+      "deepeval_included": true,
+      "deepeval_scores": {
+        "faithfulness": 0.905,
+        "answer_relevancy": 0.833
+      },
+      "pipeline_time_s": 52.3,
+      "word_count": 828,
+      "citations_used": 8
+    },
+    {
+      "company": "airbnb",
+      "status": "success",
+      "overall_score": 86.6,
+      "grade": "B",
+      "component_scores": {
+        "forbidden_content": 1.0,
+        "patterns": 0.5,
+        "citations": 1.0,
+        "stable_facts": 0.667,
+        "structure": 1.0,
+        "sentiment": 1.0,
+        "source_quality": 0.833,
+        "faithfulness": 0.96,
+        "answer_relevancy": 0.879
+      },
+      "deepeval_included": true,
+      "deepeval_scores": {
+        "faithfulness": 0.96,
+        "answer_relevancy": 0.879
+      },
+      "pipeline_time_s": 54.8,
+      "word_count": 653,
+      "citations_used": 9
+    },
+    {
+      "company": "anthropic",
+      "status": "success",
+      "overall_score": 90.6,
+      "grade": "A",
+      "component_scores": {
+        "forbidden_content": 1.0,
+        "patterns": 0.833,
+        "citations": 1.0,
+        "stable_facts": 0.833,
+        "structure": 1.0,
+        "sentiment": 0.0,
+        "source_quality": 1.0,
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.98
+      },
+      "deepeval_included": true,
+      "deepeval_scores": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 0.98
+      },
+      "pipeline_time_s": 53.1,
+      "word_count": 792,
+      "citations_used": 12
+    }
+  ],
+  "readme_summary": "## Eval Results \u2014 April 2026\n\n| Metric | Score |\n|---|---|\n| Overall average | 87.6/100 |\n| Companies passing (\u226570) | 10/10 |\n| Faithfulness (DeepEval) | 95% |\n| Answer Relevancy (DeepEval) | 90% |\n| Avg pipeline time | 57s |\n| Avg words per brief | 812 |\n| Avg citations used | 10.2 |\n| Private company handling | 0/3 graceful |"
+}
