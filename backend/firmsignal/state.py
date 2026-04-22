@@ -1,6 +1,16 @@
+import operator
 from typing import Annotated, TypedDict
 
 from langgraph.graph.message import add_messages
+
+
+def _merge_errors(a: str | None, b: str | None) -> str | None:
+    """Reducer for parallel branches that may each write an error or None."""
+    if a is None:
+        return b
+    if b is None:
+        return a
+    return f"{a}\n{b}"
 
 
 class FirmState(TypedDict):
@@ -24,10 +34,12 @@ class FirmState(TypedDict):
     final_brief: str | None
 
     # All source URLs collected across all agents — used for citation injection
-    sources: list[dict]
+    # operator.add merges lists from parallel branches without conflict
+    sources: Annotated[list[dict], operator.add]
 
     # LangGraph message history (required for streaming)
     messages: Annotated[list, add_messages]
 
     # Captures agent failures without crashing the graph
-    error: str | None
+    # _merge_errors handles concurrent writes from parallel branches
+    error: Annotated[str | None, _merge_errors]

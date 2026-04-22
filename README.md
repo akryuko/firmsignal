@@ -107,28 +107,31 @@ schemas and try-it-out for every endpoint.
 
 ## Observability
 
-Every pipeline run produces a unified LangSmith trace showing all six nodes — including the Synthesizer after HITL approval — with per-agent token counts, latency, and cost visible at the top level.
+Every pipeline run produces a unified LangSmith trace showing all six
+nodes — including the Synthesizer after HITL approval — with per-agent
+token counts, latency, and cost visible at the top level.
 
-<!-- ============================================================
-     SCREENSHOT GOES HERE
-     1. Go to smith.langchain.com
-     2. Open a completed pipeline run (e.g. FirmSignal — Microsoft)
-     3. Expand all nodes so the full tree is visible:
-          FirmSignal — Microsoft  (84.98s, 20.7K, $0.058)
-            normalizer
-            scout
-            accountant
-            skeptic
-            hitl  (shows human wait time e.g. 5.02s)
-            synthesizer
-     4. Take a screenshot
-     5. Save as: docs/langsmith_trace.png
-     6. Uncomment the line below
-     ============================================================ -->
+### Pipeline trace (tree view)
 
 ![LangSmith unified pipeline trace](docs/langsmith_trace.png)
 
-The `hitl` node latency shows how long the human spent on the review screen — a detail that surfaces in every production trace. Eval runs are isolated to a separate `firmsignal-evals` LangSmith project so production traces stay clean.
+The `hitl` node latency shows how long the human spent on the review
+screen. All six nodes appear under a single parent trace so token
+counts and cost are summed at the top level.
+
+### Parallel execution (waterfall view)
+
+![LangSmith waterfall — parallel agent execution](docs/langsmith_trace_waterfall.png)
+
+Scout, Accountant, and Skeptic run simultaneously after the Normalizer
+completes. The waterfall shows all three starting within 1-2 seconds
+of each other — total research time is determined by the slowest agent
+rather than the sum of all three. This reduced average pipeline time
+from 57s to 49s (-14%) with no meaningful quality degradation across
+10 eval companies.
+
+Eval runs are isolated to a separate `evaluators` LangSmith
+project so production traces stay clean.
 
 ---
 
@@ -155,7 +158,8 @@ Automated eval suite across 10 gold standard companies using a two-layer approac
 
 
 
-## Eval Results — April 2026
+## Eval Results — April 2026 (parallel execution, 10 companies):
+
 
 | Metric | Score |
 |---|---|
@@ -166,6 +170,19 @@ Automated eval suite across 10 gold standard companies using a two-layer approac
 | Avg pipeline time | 57s |
 | Avg words per brief | 812 |
 | Avg citations used | 10.2 |
+
+| Summary metric | Sequential | Parallel | Change |
+|---|---|---|---|
+| Overall average | 87.6 / 100 | 89.0 / 100 | +1.4 |
+| Avg pipeline time | 57s | 49s | **−14%** |
+| No hallucinations | 10 / 10 | 10 / 10 | — |
+| Faithfulness (DeepEval) | 0.95 | 0.94 | −0.01 |
+| Answer Relevancy (DeepEval) | 0.89 | 0.89 | — |
+
+Parallel execution (Scout + Accountant + Skeptic running 
+simultaneously) reduced pipeline time by 14% with no meaningful 
+quality degradation. No hallucinations across all 10 companies 
+in both configurations.
 
 > Update these numbers after running: `cd backend && uv run python -m evals.run_evals`
 

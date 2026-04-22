@@ -113,75 +113,86 @@ async def run_pipeline(record: RunRecord) -> None:
                 "note":     state["input_correction"],
             })
 
-        # ── 2. Scout ──────────────────────────────────────────────────────────────
+        # ── 2-4. Scout + Accountant + Skeptic (parallel fan-out) ─────────────────
         await _put(record, "agent_start", {
             "agent": "scout",
             "log":   "Searching for recent news and leadership changes...",
         })
-
-        result = await run_node(scout_node, "scout")
-        if result.get("error"):
-            await _error(record, result["error"])
-            return
-        state.update(result)
-
-        scout_out = state.get("scout_output") or {}
-        await _put(record, "agent_complete", {
-            "agent":  "scout",
-            "log":    (
-                f"Found {len(scout_out.get('news_items', []))} news items and "
-                f"{len(scout_out.get('leadership_changes', []))} leadership changes"
-            ),
-            "output": scout_out,
-        })
-
-        # ── 3. Accountant ─────────────────────────────────────────────────────────
         await _put(record, "agent_start", {
             "agent": "accountant",
             "log":   "Pulling financials and 5-year price history...",
         })
-
-        result = await run_node(accountant_node, "accountant")
-        if result.get("error"):
-            await _error(record, result["error"])
-            return
-        state.update(result)
-
-        acc = state.get("accountant_output") or {}
-        acc_log = (
-            f"Ticker: {acc.get('ticker')} · Cap: {acc.get('market_cap_formatted')} · "
-            f"{len(acc.get('price_history', []))} months of price data"
-            if acc.get("is_public")
-            else "Private company — no public market data"
-        )
-        await _put(record, "agent_complete", {
-            "agent":  "accountant",
-            "log":    acc_log,
-            "output": acc,
-        })
-
-        # ── 4. Skeptic ────────────────────────────────────────────────────────────
         await _put(record, "agent_start", {
             "agent": "skeptic",
             "log":   "Analysing sentiment, reviews, and risk signals...",
         })
 
-        result = await run_node(skeptic_node, "skeptic")
-        if result.get("error"):
-            await _error(record, result["error"])
-            return
-        state.update(result)
+        async def _run_scout():
+            r = await run_node(scout_node, "scout")
+            if not r.get("error"):
+                out = r.get("scout_output") or {}
+                await _put(record, "agent_complete", {
+                    "agent":  "scout",
+                    "log":    (
+                        f"Found {len(out.get('news_items', []))} news items and "
+                        f"{len(out.get('leadership_changes', []))} leadership changes"
+                    ),
+                    "output": out,
+                })
+            return r
+
+        async def _run_accountant():
+            r = await run_node(accountant_node, "accountant")
+            if not r.get("error"):
+                out = r.get("accountant_output") or {}
+                log = (
+                    f"Ticker: {out.get('ticker')} · Cap: {out.get('market_cap_formatted')} · "
+                    f"{len(out.get('price_history', []))} months of price data"
+                    if out.get("is_public")
+                    else "Private company — no public market data"
+                )
+                await _put(record, "agent_complete", {
+                    "agent":  "accountant",
+                    "log":    log,
+                    "output": out,
+                })
+            return r
+
+        async def _run_skeptic():
+            r = await run_node(skeptic_node, "skeptic")
+            if not r.get("error"):
+                out = r.get("skeptic_output") or {}
+                await _put(record, "agent_complete", {
+                    "agent":  "skeptic",
+                    "log":    (
+                        f"Sentiment: {out.get('sentiment_score', 0):+.2f} "
+                        f"({out.get('sentiment_label')}) · "
+                        f"{len(out.get('risk_flags', []))} risk flags"
+                    ),
+                    "output": out,
+                })
+            return r
+
+        scout_r, acc_r, skep_r = await asyncio.gather(
+            _run_scout(), _run_accountant(), _run_skeptic()
+        )
+
+        for r in (scout_r, acc_r, skep_r):
+            if r.get("error"):
+                await _error(record, r["error"])
+                return
+
+        state.update(scout_r)
+        state.update(acc_r)
+        state.update(skep_r)
+        # Merge sources from all three (each agent only sees the pre-run snapshot)
+        state["sources"] = (
+            scout_r.get("sources", []) +
+            acc_r.get("sources", []) +
+            skep_r.get("sources", [])
+        )
 
         skep = state.get("skeptic_output") or {}
-        await _put(record, "agent_complete", {
-            "agent":  "skeptic",
-            "log":    (
-                f"Sentiment: {skep.get('sentiment_score', 0):+.2f} "
-                f"({skep.get('sentiment_label')}) · "
-                f"{len(skep.get('risk_flags', []))} risk flags"
-            ),
-            "output": skep,
-        })
 
         # ── 5. HITL pause ─────────────────────────────────────────────────────────
         record.status    = RunStatus.PAUSED
