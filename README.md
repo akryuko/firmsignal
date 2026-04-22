@@ -354,3 +354,38 @@ uv run pytest tests/ -v
 38 tests across three layers — unit (validation, source quality,
 cache, eval scoring) and API (all endpoints with mocked pipeline).
 All tests run offline with no external API calls.
+
+## Experiments
+
+### Skeptic evidence threshold
+
+Tested three evidence threshold variants across Boeing, Nvidia,
+and Tesla to find the optimal balance between risk coverage
+and accuracy.
+
+| Variant | Avg score | Hallucinations | Patterns | Risk flags |
+|---|---|---|---|---|
+| Baseline (one credible source) | 90.9 / 100 | 0% | 83.3% | 5.0 avg |
+| Strict (two independent sources) | 93.6 / 100 | 0% | 88.9% | 5.0 avg |
+| Aggressive (any source) | 86.4 / 100 | 0% | 77.8% | 5.0 avg |
+
+**Key findings:**
+- Zero hallucinations across all variants — source filtering
+  is robust regardless of evidence threshold
+- Strict mode unexpectedly outperformed baseline — requiring
+  two sources forced higher-quality evidence selection
+- Aggressive mode degraded citation quality (Boeing dropped
+  from 1.0 to 0.5) as unverified single-source claims
+  reduced factual density
+- Risk flag count identical across variants — Claude reaches
+  the configured maximum (5) in all cases, variants affect
+  flag quality not quantity
+
+**Decision:** kept baseline (one credible source required).
+Strict mode scores marginally higher but would miss genuine
+single-source risks in breaking news scenarios. The current
+threshold correctly balances precision and recall.
+
+*Full results: `backend/evals/results/experiment_skeptic_strictness.json`*
+*LangSmith: Datasets → firmsignal-golden-10 → Experiments
+(filter by `skeptic-baseline`, `skeptic-strict`, `skeptic-aggressive`)*

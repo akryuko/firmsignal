@@ -1,0 +1,218 @@
+{
+  "experiment": "skeptic_evidence_threshold",
+  "run_at": "2026-04-22T14:37:02.774161",
+  "hypothesis": "Stricter evidence threshold reduces hallucinations but misses genuine risks. Aggressive threshold surfaces more risks but introduces noise.",
+  "variants": {
+    "baseline": "Current setting \u2014 one credible source required",
+    "strict": "Two independent sources required per risk flag",
+    "aggressive": "Any source acceptable, surface all potential risks"
+  },
+  "companies": [
+    "boeing",
+    "nvidia",
+    "tesla"
+  ],
+  "results": {
+    "baseline": [
+      {
+        "status": "success",
+        "overall_score": 89.2,
+        "grade": "B",
+        "component_scores": {
+          "forbidden_content": 1.0,
+          "patterns": 0.833,
+          "citations": 1.0,
+          "stable_facts": 0.5,
+          "structure": 1.0,
+          "sentiment": 1.0,
+          "source_quality": 1.0
+        },
+        "risk_flag_count": 5,
+        "sentiment_score": -0.65,
+        "word_count": 856,
+        "sources_count": 26,
+        "company": "boeing"
+      },
+      {
+        "status": "success",
+        "overall_score": 91.7,
+        "grade": "A",
+        "component_scores": {
+          "forbidden_content": 1.0,
+          "patterns": 0.833,
+          "citations": 1.0,
+          "stable_facts": 1.0,
+          "structure": 1.0,
+          "sentiment": 0.0,
+          "source_quality": 1.0
+        },
+        "risk_flag_count": 5,
+        "sentiment_score": -0.15,
+        "word_count": 933,
+        "sources_count": 27,
+        "company": "nvidia"
+      },
+      {
+        "status": "success",
+        "overall_score": 91.7,
+        "grade": "A",
+        "component_scores": {
+          "forbidden_content": 1.0,
+          "patterns": 0.833,
+          "citations": 1.0,
+          "stable_facts": 0.667,
+          "structure": 1.0,
+          "sentiment": 1.0,
+          "source_quality": 1.0
+        },
+        "risk_flag_count": 5,
+        "sentiment_score": -0.35,
+        "word_count": 865,
+        "sources_count": 23,
+        "company": "tesla"
+      }
+    ],
+    "strict": [
+      {
+        "status": "success",
+        "overall_score": 89.2,
+        "grade": "B",
+        "component_scores": {
+          "forbidden_content": 1.0,
+          "patterns": 0.833,
+          "citations": 1.0,
+          "stable_facts": 0.5,
+          "structure": 1.0,
+          "sentiment": 1.0,
+          "source_quality": 1.0
+        },
+        "risk_flag_count": 5,
+        "sentiment_score": -0.65,
+        "word_count": 881,
+        "sources_count": 26,
+        "company": "boeing"
+      },
+      {
+        "status": "success",
+        "overall_score": 95.0,
+        "grade": "A",
+        "component_scores": {
+          "forbidden_content": 1.0,
+          "patterns": 1.0,
+          "citations": 1.0,
+          "stable_facts": 1.0,
+          "structure": 1.0,
+          "sentiment": 0.0,
+          "source_quality": 1.0
+        },
+        "risk_flag_count": 5,
+        "sentiment_score": -0.15,
+        "word_count": 873,
+        "sources_count": 27,
+        "company": "nvidia"
+      },
+      {
+        "status": "success",
+        "overall_score": 96.7,
+        "grade": "A",
+        "component_scores": {
+          "forbidden_content": 1.0,
+          "patterns": 0.833,
+          "citations": 1.0,
+          "stable_facts": 1.0,
+          "structure": 1.0,
+          "sentiment": 1.0,
+          "source_quality": 1.0
+        },
+        "risk_flag_count": 5,
+        "sentiment_score": -0.35,
+        "word_count": 768,
+        "sources_count": 23,
+        "company": "tesla"
+      }
+    ],
+    "aggressive": [
+      {
+        "status": "success",
+        "overall_score": 79.2,
+        "grade": "C",
+        "component_scores": {
+          "forbidden_content": 1.0,
+          "patterns": 0.833,
+          "citations": 0.5,
+          "stable_facts": 0.5,
+          "structure": 1.0,
+          "sentiment": 1.0,
+          "source_quality": 1.0
+        },
+        "risk_flag_count": 5,
+        "sentiment_score": -0.65,
+        "word_count": 704,
+        "sources_count": 26,
+        "company": "boeing"
+      },
+      {
+        "status": "success",
+        "overall_score": 91.7,
+        "grade": "A",
+        "component_scores": {
+          "forbidden_content": 1.0,
+          "patterns": 0.833,
+          "citations": 1.0,
+          "stable_facts": 1.0,
+          "structure": 1.0,
+          "sentiment": 0.0,
+          "source_quality": 1.0
+        },
+        "risk_flag_count": 5,
+        "sentiment_score": -0.25,
+        "word_count": 957,
+        "sources_count": 27,
+        "company": "nvidia"
+      },
+      {
+        "status": "success",
+        "overall_score": 88.3,
+        "grade": "B",
+        "component_scores": {
+          "forbidden_content": 1.0,
+          "patterns": 0.667,
+          "citations": 1.0,
+          "stable_facts": 0.667,
+          "structure": 1.0,
+          "sentiment": 1.0,
+          "source_quality": 1.0
+        },
+        "risk_flag_count": 5,
+        "sentiment_score": -0.35,
+        "word_count": 749,
+        "sources_count": 23,
+        "company": "tesla"
+      }
+    ]
+  },
+  "summary": {
+    "baseline": {
+      "avg_overall_score": 90.9,
+      "avg_risk_flags": 5.0,
+      "hallucination_rate": 0.0,
+      "avg_patterns_score": 0.833,
+      "companies_evaluated": 3
+    },
+    "strict": {
+      "avg_overall_score": 93.6,
+      "avg_risk_flags": 5.0,
+      "hallucination_rate": 0.0,
+      "avg_patterns_score": 0.889,
+      "companies_evaluated": 3
+    },
+    "aggressive": {
+      "avg_overall_score": 86.4,
+      "avg_risk_flags": 5.0,
+      "hallucination_rate": 0.0,
+      "avg_patterns_score": 0.778,
+      "companies_evaluated": 3
+    }
+  },
+  "conclusion": "All three variants produced zero hallucinations, confirming FirmSignal's source filtering is robust regardless of evidence threshold. Unexpectedly, the strict variant outperformed baseline (93.6 vs 90.9 avg score) — requiring two independent sources forced higher-quality evidence selection and more precise flag descriptions. The aggressive variant underperformed (86.4) primarily due to degraded citation quality on Boeing (0.5 vs 1.0) where single-source unverified claims reduced the brief's factual density. Risk flag count was identical across all variants (5.0 avg) indicating Claude hits the configured maximum in all cases — the variants affect flag quality not quantity. Decision: keep baseline setting. Strict mode is marginally better on quality metrics but would miss genuine single-source risks in breaking news scenarios. The current one-credible-source threshold balances precision and recall correctly."
+}

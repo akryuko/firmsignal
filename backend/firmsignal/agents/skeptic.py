@@ -206,6 +206,10 @@ def skeptic_node(state: FirmState) -> dict:
     year = datetime.now().strftime("%Y")
     today = datetime.now().strftime("%Y-%m-%d")
 
+        # Read experiment variant if set
+    prompt_suffix = os.getenv("SKEPTIC_PROMPT_SUFFIX", "")
+    system_prompt = _SYSTEM + prompt_suffix
+
     node_start = time.time()
     timeout_reached = [False]
 
@@ -294,7 +298,7 @@ def skeptic_node(state: FirmState) -> dict:
         output: SkepticOutput = _invoke_llm(
             llm,
             [
-                SystemMessage(content=_SYSTEM),
+                SystemMessage(content=system_prompt),
                 HumanMessage(content=_build_prompt(company, reddit_posts, web_results)),
             ],
         )
