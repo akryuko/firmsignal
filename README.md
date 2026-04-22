@@ -161,16 +161,6 @@ Automated eval suite across 10 gold standard companies using a two-layer approac
 ## Eval Results — April 2026 (parallel execution, 10 companies):
 
 
-| Metric | Score |
-|---|---|
-| Overall average | 87.6 / 100 |
-| Companies passing (≥70) | 10 / 10 |
-| Faithfulness (DeepEval) | 95% |
-| Answer Relevancy (DeepEval) | 89.8% |
-| Avg pipeline time | 57s |
-| Avg words per brief | 812 |
-| Avg citations used | 10.2 |
-
 | Summary metric | Sequential | Parallel | Change |
 |---|---|---|---|
 | Overall average | 87.6 / 100 | 89.0 / 100 | +1.4 |
