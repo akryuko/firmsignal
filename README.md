@@ -372,8 +372,10 @@ and accuracy.
 **Key findings:**
 - Zero hallucinations across all variants — source filtering
   is robust regardless of evidence threshold
-- Strict mode unexpectedly outperformed baseline — requiring
-  two sources forced higher-quality evidence selection
+- Strict mode outperformed baseline (93.6 vs 90.9) — requiring
+  two independent sources raised the evidence bar, producing
+  more precise flag descriptions that scored higher on pattern
+  coverage
 - Aggressive mode degraded citation quality (Boeing dropped
   from 1.0 to 0.5) as unverified single-source claims
   reduced factual density
@@ -381,10 +383,10 @@ and accuracy.
   the configured maximum (5) in all cases, variants affect
   flag quality not quantity
 
-**Decision:** kept baseline (one credible source required).
-Strict mode scores marginally higher but would miss genuine
-single-source risks in breaking news scenarios. The current
-threshold correctly balances precision and recall.
+**Decision:** kept baseline despite strict mode's higher score.
+Strict mode would miss genuine single-source risks in breaking
+news scenarios where only one outlet has reported an event.
+The quality gain does not justify the coverage loss.
 
 *Full results: `backend/evals/results/experiment_skeptic_strictness.json`*
 *LangSmith: Datasets → firmsignal-golden-10 → Experiments
