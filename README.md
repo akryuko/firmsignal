@@ -1,17 +1,26 @@
 # FirmSignal
 
-Multi-agent company intelligence system. Type a company name — a team of AI agents researches recent news, pulls financial data, analyses public sentiment, then pauses for your review before generating a cited intelligence brief.
+Multi-agent company intelligence with a human-in-the-loop checkpoint.
+Type a company name — six AI agents research news, financials, and
+public sentiment, then pause for your review before generating a
+cited intelligence brief.
 
-**Live demo:** https://firmsignal.vercel.app
-**Backend API:** https://firmsignal.up.railway.app/docs
+**Live demo:** https://firmsignal-web.vercel.app
+**Backend API:** https://firmsignal-production.up.railway.app/docs
 
 ---
 
 ## What it does
 
-Give FirmSignal a company name (or a misspelling, or a ticker symbol). Within 60–90 seconds you receive a structured intelligence brief covering recent developments, financial performance, risk flags, and a bull/bear signal summary — with every factual claim linked to a source.
+Give FirmSignal a company name — or a misspelling, a ticker symbol,
+or an informal name like "Google" — and within 50 seconds you receive
+a structured brief covering recent developments, financial performance,
+risk flags with source links, and a bull/bear signal summary.
 
-The pipeline pauses after the Skeptic agent so you can review risk flags, add an analyst note, and approve before the final report is written. This Human-in-the-Loop checkpoint is the core design decision — it keeps a human in control of what goes into the brief.
+The pipeline pauses after the Skeptic agent so you can review risk
+flags, add an analyst note, and approve before the Synthesizer writes
+the final report. This Human-in-the-Loop checkpoint is the core design
+decision — controllable AI by architecture, not by prompt.
 
 ---
 
@@ -45,28 +54,37 @@ Synthesizer       Writes the final cited brief
 ## Architecture
 
 ```
-backend/                          frontend/
-  firmsignal/                       app/
-    agents/                           page.tsx            Search
-      normalizer.py                   analyze/[runId]/
-      scout.py                          page.tsx           Live feed
-      accountant.py                     review/            HITL panel
-      skeptic.py                        report/            Final brief
-      hitl.py                       components/
-      synthesizer.py                  AgentCard.tsx
-    api/                              StockChart.tsx
-      app.py          FastAPI          CitedBrief.tsx
-      routes.py       3 endpoints      RiskBadge.tsx
-      runner.py       SSE streaming  lib/
-      store.py        Run state        api.ts
-    tools/                             useSSE.ts           SSE hook
-      cache.py        Redis cache    store/
-      source_quality.py               run.ts              Zustand
+backend/                               frontend/
+  firmsignal/                            app/
+    agents/          LangGraph nodes       page.tsx              Search
+      normalizer.py                        analyze/[runId]/
+      scout.py                               page.tsx             Live feed
+      accountant.py                          review/page.tsx      HITL panel
+      skeptic.py                             report/page.tsx      Final brief
+      hitl.py                            components/
+      synthesizer.py                       AgentCard.tsx
+    api/             FastAPI                StockChart.tsx
+      app.py                               CitedBrief.tsx
+      routes.py      6 endpoints            RiskBadge.tsx
+      runner.py      SSE streaming        lib/
+      store.py       Run state              api.ts
+      pdf.py         PDF export             useSSE.ts             SSE hook
+      models.py      Pydantic schemas     store/
+      validation.py                         run.ts                Zustand
+      limiter.py     Rate limiting        types/
+    tools/                                   index.ts
+      cache.py       Redis
+      source_quality.py
+      retry.py
+    graph.py         LangGraph wiring
+    state.py         Shared state
+    models.py        Domain models
   evals/
-    golden/           10 companies
-    eval_utils.py     8-dimension scoring
-    run_evals.py      Automated suite
+    run_evals.py     Automated suite
+    eval_utils.py    8-dimension scoring
     deepeval_checks.py
+    experiments/     A/B experiments
+    golden/          10 companies
 ```
 
 **API endpoints:**
@@ -80,28 +98,58 @@ backend/                          frontend/
 | `GET` | `/api/status/{run_id}` | Poll run status |
 | `GET` | `/health` | Health check |
 
-**Interactive API docs (Swagger UI):** `http://localhost:8000/docs` locally,
-or `https://your-railway-url.up.railway.app/docs` after deploy.
+**Interactive API docs (Swagger UI):** 
+`http://localhost:8000/docs` locally,
+or `https://firmsignal-production.up.railway.app/docs` after deploy.
+
 Auto-generated by FastAPI from Pydantic models — includes request/response
 schemas and try-it-out for every endpoint.
 ---
 
 ## Tech stack
 
-| Layer | Technology |
+**AI / Agents**
+
+| | |
 |---|---|
-| Agent orchestration | LangGraph (stateful, interrupt/resume) |
-| LLM — research agents | Claude Haiku (fast, low cost) |
-| LLM — synthesis | Claude Sonnet (quality output) |
+| Agent framework | LangGraph — stateful graph, `interrupt()` / resume, parallel node execution |
+| LLM provider | Anthropic Claude — Haiku for research agents, Sonnet for synthesis |
+| LLM integration | LangChain + `langchain-anthropic` |
+| Structured output | Pydantic v2 + `.with_structured_output()` |
 | Web search | Tavily (advanced search depth) |
-| Financial data | yfinance (free, 5Y monthly history) |
-| Semantic cache | Upstash Redis |
-| Structured output | Pydantic with `.with_structured_output()` |
-| Observability | LangSmith (unified pipeline traces) |
-| Backend | FastAPI + Server-Sent Events |
-| Frontend | Next.js 14 · TypeScript · Tailwind · Shadcn/ui |
-| State management | Zustand |
+| Social sentiment | PRAW — Reddit API |
+| Financial data | yfinance — 5-year monthly price history |
+| Semantic cache | Upstash Redis — deduplicates identical queries |
+| Resilience | Tenacity — exponential backoff on LLM + API calls |
+| Observability | LangSmith — unified traces, per-agent token counts and cost |
+| Evals | DeepEval — faithfulness + answer relevancy LLM-as-judge |
+
+**Backend**
+
+| | |
+|---|---|
+| API | FastAPI + Server-Sent Events (`sse-starlette`) |
+| Runtime | Python 3.11 · Uvicorn · uv |
+| Rate limiting | SlowAPI |
+| PDF export | ReportLab |
+| Database | Supabase |
+
+**Frontend**
+
+| | |
+|---|---|
+| Framework | Next.js 16 · React 19 · TypeScript |
+| Styling | Tailwind CSS v4 · Shadcn/ui · Radix UI |
+| State | Zustand v5 |
 | Charts | Recharts |
+| Streaming | Native `EventSource` / custom `useSSE` hook |
+
+**Deployment**
+
+| | |
+|---|---|
+| Backend | Railway — Nixpacks build, `on_failure` restart, `/health` check |
+| Frontend | Vercel — automatic preview deployments on every push |
 
 ---
 
@@ -181,7 +229,6 @@ in both configurations.
 **Results — April 2026** (full experiment tracked in LangSmith):
 
 ![LangSmith Experiments tab showing eval scores across 10 companies](docs/eval_results.png)
-
 
 ---
 
@@ -306,6 +353,11 @@ Both deploy from the same monorepo. Railway and Vercel each watch their respecti
 3. Go back to Railway — set `ALLOWED_ORIGINS` to the Vercel URL
 4. Redeploy backend once to pick up the CORS change
 
+> **Note:** Run state is held in memory (LangGraph MemorySaver).
+> A server restart during the HITL review step will lose the active run.
+> Persistent storage via Supabase is planned — this also enables
+> watchlist features and historical report storage.
+
 ---
 
 ## Design decisions
@@ -324,26 +376,6 @@ Both deploy from the same monorepo. Railway and Vercel each watch their respecti
 
 ---
 
-## Project structure
-
-```
-firmsignal/
-  backend/
-    firmsignal/         Python package — agents, API, tools
-    evals/              Eval suite — golden files, scoring, results
-    pyproject.toml
-    .env.example
-  frontend/
-    app/                Next.js App Router pages
-    components/         Shared UI components
-    lib/                API client, SSE hook, validation
-    store/              Zustand global state
-    package.json
-    .env.local.example
-  README.md
-  .gitignore
-```
-
 ## Tests
 
 ```bash
@@ -351,9 +383,16 @@ cd backend
 uv run pytest tests/ -v
 ```
 
-38 tests across three layers — unit (validation, source quality,
-cache, eval scoring) and API (all endpoints with mocked pipeline).
-All tests run offline with no external API calls.
+38 tests — all run offline with no external API calls.
+
+| Layer | File | What it tests |
+|---|---|---|
+| Unit | `test_validation.py` | Input sanitization — empty, too long, XSS, blocked words |
+| Unit | `test_source_quality.py` | Domain allowlist, blocked titles, tier scoring |
+| Unit | `test_cache.py` | Redis key generation — deterministic, case-insensitive |
+| Unit | `test_eval_utils.py` | Scoring logic — facts, citations, forbidden content, sentiment |
+| API | `test_routes.py` | All endpoints — 422 validation, 404 handling, mocked pipeline |
+
 
 ## Experiments
 
