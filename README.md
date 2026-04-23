@@ -222,8 +222,6 @@ simultaneously) reduced pipeline time by 14% with no meaningful
 quality degradation. No hallucinations across all 10 companies 
 in both configurations.
 
-> Update these numbers after running: `cd backend && uv run python -m evals.run_evals`
-
 **Golden dataset:** 10 companies covering public/private, high/low sentiment, different sectors (tech, aerospace, finance, travel). Each golden file contains stable facts, expected patterns, forbidden content checks, and quality thresholds. Files are in `backend/evals/golden/` and should be re-verified every 90 days (`last_verified` field tracks this).
 
 **Results — April 2026** (full experiment tracked in LangSmith):
