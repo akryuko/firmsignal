@@ -1,3 +1,4 @@
+from unittest.mock import patch
 from evals.eval_utils import (
     check_stable_facts,
     check_forbidden_content,
@@ -47,13 +48,15 @@ def test_stable_facts_finds_ceo():
     assert len(passed) > 0
 
 def test_forbidden_content_passes_clean_brief():
-    result = check_forbidden_content(SAMPLE_BRIEF, SAMPLE_GOLDEN)
+    with patch("evals.eval_utils._ask_judge", return_value=False):
+        result = check_forbidden_content(SAMPLE_BRIEF, SAMPLE_GOLDEN)
     assert result["score"] == 1.0
     assert not result["critical"]
 
 def test_forbidden_content_catches_violation():
     bad_brief = SAMPLE_BRIEF + "\nJensen Huang stepped down as CEO."
-    result = check_forbidden_content(bad_brief, SAMPLE_GOLDEN)
+    with patch("evals.eval_utils._ask_judge", return_value=False):
+        result = check_forbidden_content(bad_brief, SAMPLE_GOLDEN)
     assert result["score"] == 0.0
     assert result["critical"]
 
