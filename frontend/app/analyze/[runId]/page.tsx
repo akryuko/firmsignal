@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import { useRunStore } from "@/store/run"
 import { useSSE } from "@/lib/useSSE"
 import { AgentCard } from "@/components/AgentCard"
+import { ErrorState } from "@/components/ErrorState"
 import { AgentStatus } from "@/types"
 
 const AGENTS = [
@@ -28,9 +29,14 @@ export default function AnalyzePage() {
   useEffect(() => {
     if (screen === "hitl")   router.push(`/analyze/${runId}/review`)
     if (screen === "report") router.push(`/analyze/${runId}/report`)
-    if (screen === "error")  router.push(`/analyze/${runId}/error`)
     if (screen === "search") router.push("/")
+    // screen === "error" renders ErrorState inline below — there is no
+    // /analyze/[runId]/error route (that path is a Next.js error.tsx
+    // boundary, which only catches thrown render errors, not this
+    // SSE-reported pipeline error).
   }, [screen, runId, router])
+
+  if (screen === "error") return <ErrorState />
 
   // Derive HITL status from surrounding agent states + screen
   function hitlStatus(): AgentStatus {

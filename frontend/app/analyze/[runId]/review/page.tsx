@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import { useRunStore } from "@/store/run"
 import { resumeRun } from "@/lib/api"
 import { useSSE } from "@/lib/useSSE"
+import { ErrorState } from "@/components/ErrorState"
 import { StockChart } from "@/components/StockChart"
 import { RiskBadge } from "@/components/RiskBadge"
 import { Button } from "@/components/ui/button"
@@ -44,6 +45,7 @@ export default function ReviewPage() {
   }, [screen, runId, router])
 
   if (screen === "report") return null
+  if (screen === "error")  return <ErrorState />
 
   const scout = outputs.scout
   const acc   = outputs.accountant
