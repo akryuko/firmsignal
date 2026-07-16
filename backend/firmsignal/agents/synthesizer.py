@@ -285,6 +285,22 @@ def _invoke_llm(llm, messages):
     return llm.invoke(messages)
 
 
+def _extract_text(content) -> str:
+    """
+    response.content is a plain string when thinking is off, but a list of
+    content blocks (thinking + text) when adaptive thinking is on — which
+    Claude Sonnet 5 runs by default whenever `thinking` isn't set explicitly.
+    Pull out just the text blocks either way.
+    """
+    if isinstance(content, str):
+        return content
+    return "".join(
+        block.get("text", "")
+        for block in content
+        if isinstance(block, dict) and block.get("type") == "text"
+    )
+
+
 # ─── The node ─────────────────────────────────────────────────────────────────
 
 def synthesizer_node(state: FirmState) -> dict:
@@ -339,7 +355,7 @@ def synthesizer_node(state: FirmState) -> dict:
             )
             return {"final_brief": output.brief, "error": None}
 
-        brief = response.content.strip()
+        brief = _extract_text(response.content).strip()
 
         # Count unique [N] citations in the output
         citations_used = set(re.findall(r'\[(\d+)\]', brief))
