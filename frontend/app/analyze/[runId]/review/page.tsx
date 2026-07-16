@@ -7,7 +7,6 @@ import { resumeRun } from "@/lib/api"
 import { useSSE } from "@/lib/useSSE"
 import { ErrorState } from "@/components/ErrorState"
 import { StockChart } from "@/components/StockChart"
-import { CitedBrief } from "@/components/CitedBrief"
 import { RiskBadge } from "@/components/RiskBadge"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -35,7 +34,6 @@ export default function ReviewPage() {
   const priceHistory   = useRunStore((s) => s.priceHistory)
   const ticker         = useRunStore((s) => s.ticker)
   const screen         = useRunStore((s) => s.screen)
-  const streamingParagraphs = useRunStore((s) => s.streamingParagraphs)
 
   // Keep SSE open — receives synthesizer events after resume
   useSSE(runId)
@@ -271,22 +269,6 @@ export default function ReviewPage() {
           </Button>
         </div>
       </div>
-
-      {/* Live brief — streams in paragraph by paragraph once approved */}
-      {resuming && streamingParagraphs.length > 0 && (
-        <>
-          <Separator className="my-8" />
-          <div>
-            <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-slate-700">
-              ✍️ Drafting the intelligence brief
-              <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
-            </h2>
-            <div className="rounded-xl border bg-white px-6 py-5">
-              <CitedBrief brief={streamingParagraphs.join("\n\n")} sources={[]} />
-            </div>
-          </div>
-        </>
-      )}
     </main>
   )
 }
