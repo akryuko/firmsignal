@@ -14,14 +14,14 @@ _executor = ThreadPoolExecutor(max_workers=4)
 
 
 async def _put(record: RunRecord, event: str, data: dict) -> None:
-    await record.events.put({"event": event, "data": data})
+    await record.broadcast({"event": event, "data": data})
 
 
 async def _error(record: RunRecord, msg: str) -> None:
     record.status = RunStatus.ERROR
     record.error  = msg
     await _put(record, "error", {"message": msg})
-    await record.events.put(None)
+    await record.broadcast(None)
 
 
 async def run_pipeline(record: RunRecord) -> None:
@@ -242,7 +242,7 @@ async def run_pipeline(record: RunRecord) -> None:
         if not decision or not decision.get("approved"):
             record.status = RunStatus.ABORTED
             await _put(record, "aborted", {"run_id": run_id})
-            await record.events.put(None)
+            await record.broadcast(None)
             return
 
         # ── 6. Synthesizer ────────────────────────────────────────────────────────
@@ -274,7 +274,7 @@ async def run_pipeline(record: RunRecord) -> None:
             "sources":       state.get("sources", []),
             "company":       state["company_name"],
         })
-        await record.events.put(None)
+        await record.broadcast(None)
 
     finally:
         if _ls_ctx is not None:
