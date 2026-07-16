@@ -1,10 +1,13 @@
+import asyncio
 import concurrent.futures
 import contextvars
 import re
 from datetime import datetime
+from typing import Awaitable, Callable
 
+import anthropic
 from langchain_anthropic import ChatAnthropic
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
 from firmsignal.models import SynthesizerOutput
 from firmsignal.state import FirmState
@@ -280,6 +283,14 @@ Remember: every factual claim needs a [N] citation matching the source list abov
 
 # ─── LLM invoke ───────────────────────────────────────────────────────────────
 
+def _prepare(state: FirmState) -> tuple[ChatAnthropic, list[BaseMessage], list[dict]]:
+    sources  = _validate_sources(state.get("sources", []))
+    llm      = ChatAnthropic(model="claude-sonnet-5", max_tokens=4096)
+    context  = _build_context(state, sources)
+    messages = [SystemMessage(content=_SYSTEM), HumanMessage(content=context)]
+    return llm, messages, sources
+
+
 @llm_retry
 def _invoke_llm(llm, messages):
     return llm.invoke(messages)
@@ -299,6 +310,68 @@ def _extract_text(content) -> str:
         for block in content
         if isinstance(block, dict) and block.get("type") == "text"
     )
+
+
+_RETRYABLE_LLM_ERRORS = (
+    anthropic.APITimeoutError,
+    anthropic.RateLimitError,
+    anthropic.InternalServerError,
+)
+
+
+async def _stream_brief(
+    llm: ChatAnthropic,
+    messages: list[BaseMessage],
+    on_paragraph: Callable[[str], Awaitable[None]],
+    partial: dict,
+) -> str:
+    """
+    Streams the response, flushing each complete paragraph (blank-line
+    delimited) to on_paragraph as it arrives, so the UI can render the
+    brief incrementally instead of waiting for the full ~90s call.
+
+    Mirrors accumulated text into partial["text"] as it goes, so a caller
+    wrapping this in asyncio.wait_for() can still recover whatever was
+    generated so far if a timeout cancels this coroutine mid-stream —
+    local variables here are lost on cancellation, but partial (passed
+    in by reference) still reflects every mutation made before it.
+
+    Only retries (matching llm_retry's policy: timeout/rate-limit/server
+    error, one retry) if nothing has been streamed to the user yet —
+    retrying after paragraphs have already been shown would re-run the
+    whole generation and emit duplicate content.
+    """
+    for attempt in range(2):
+        buffer = ""
+        emitted_any = False
+        try:
+            async for chunk in llm.astream(messages):
+                text = _extract_text(chunk.content)
+                if not text:
+                    continue
+                buffer += text
+                partial["text"] += text
+                while "\n\n" in buffer:
+                    para, buffer = buffer.split("\n\n", 1)
+                    para = para.strip()
+                    if para:
+                        await on_paragraph(para)
+                        emitted_any = True
+
+            remainder = buffer.strip()
+            if remainder:
+                await on_paragraph(remainder)
+            return partial["text"].strip()
+
+        except _RETRYABLE_LLM_ERRORS as e:
+            if emitted_any or attempt == 1:
+                raise
+            print(f"[Synthesizer] Stream failed before any output — retrying: {e}")
+            partial["text"] = ""
+            await asyncio.sleep(3)
+            continue
+
+    raise RuntimeError("unreachable")  # pragma: no cover
 
 
 # ─── The node ─────────────────────────────────────────────────────────────────
@@ -321,19 +394,11 @@ def synthesizer_node(state: FirmState) -> dict:
 
     company = state["company_name"]
     today   = datetime.now().strftime("%Y-%m-%d")
-    sources = _validate_sources(state.get("sources", []))
-
-    print(f"\n[Synthesizer] Generating intelligence brief for '{company}'...")
-    print(f"[Synthesizer] Using Claude Sonnet · {len(sources)} sources available")
 
     try:
-        llm = ChatAnthropic(
-            model="claude-sonnet-5",
-            max_tokens=4096,
-        )
-
-        context = _build_context(state, sources)
-        messages = [SystemMessage(content=_SYSTEM), HumanMessage(content=context)]
+        llm, messages, sources = _prepare(state)
+        print(f"\n[Synthesizer] Generating intelligence brief for '{company}'...")
+        print(f"[Synthesizer] Using Claude Sonnet · {len(sources)} sources available")
 
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         ctx = contextvars.copy_context()
@@ -360,6 +425,82 @@ def synthesizer_node(state: FirmState) -> dict:
         # Count unique [N] citations in the output
         citations_used = set(re.findall(r'\[(\d+)\]', brief))
 
+        word_count = len(brief.split())
+
+        print(
+            f"[Synthesizer] Done — "
+            f"{word_count} words · "
+            f"{len(citations_used)} unique citations"
+        )
+
+        output = SynthesizerOutput(
+            brief=brief,
+            word_count=word_count,
+            sources_cited=len(citations_used),
+            generated_at=today,
+        )
+
+        return {
+            "final_brief": output.brief,
+            "error": None,
+        }
+
+    except Exception as e:
+        print(f"[Synthesizer] Error: {e}")
+        return {"error": f"Synthesizer failed: {type(e).__name__}: {e}"}
+
+
+# ─── Streaming entry point (live web pipeline) ────────────────────────────────
+
+async def stream_synthesizer(
+    state: FirmState,
+    on_paragraph: Callable[[str], Awaitable[None]],
+) -> dict:
+    """
+    Async, streaming counterpart to synthesizer_node — used by the live
+    web pipeline (api/runner.py) so the UI can render the brief paragraph
+    by paragraph as Claude generates it, instead of waiting for the full
+    ~90s call to complete. synthesizer_node stays as-is (sync, all-or-
+    nothing) for the LangGraph CLI/evals path, which doesn't stream to
+    a client.
+
+    on_paragraph is awaited once per completed paragraph (text up to a
+    blank-line boundary), in generation order, plus once more for any
+    trailing partial paragraph once the stream ends.
+    """
+    if not state.get("hitl_approved"):
+        print("\n[Synthesizer] Run was not approved — skipping.")
+        return {"final_brief": None, "error": None}
+
+    company = state["company_name"]
+    today   = datetime.now().strftime("%Y-%m-%d")
+
+    try:
+        llm, messages, sources = _prepare(state)
+        print(f"\n[Synthesizer] Generating intelligence brief for '{company}'...")
+        print(f"[Synthesizer] Using Claude Sonnet · {len(sources)} sources available")
+
+        partial: dict = {"text": ""}
+        try:
+            brief = await asyncio.wait_for(
+                _stream_brief(llm, messages, on_paragraph, partial),
+                timeout=90,
+            )
+        except asyncio.TimeoutError:
+            # asyncio.wait_for cancels _stream_brief on timeout, so its local
+            # state is gone — but partial (mutated by reference before the
+            # cancellation) still holds whatever text streamed to the user.
+            print("[Synthesizer] Synthesis timed out after 90s")
+            brief = partial["text"].strip()
+            if brief:
+                note = "> Note: Report generation timed out after 90s — brief above is based on partial output."
+                brief = f"{brief}\n\n{note}"
+            else:
+                note = "> Note: Report generation timed out. No content was generated before the timeout."
+                brief = note
+            await on_paragraph(note)
+
+        citations_used = set(re.findall(r'\[(\d+)\]', brief))
         word_count = len(brief.split())
 
         print(

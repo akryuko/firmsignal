@@ -38,6 +38,11 @@ export function useSSE(runId: string | null) {
       es.close()
     })
 
+    es.addEventListener("brief_paragraph", (e) => {
+      const data = JSON.parse((e as MessageEvent).data)
+      if (data.paragraph) store.appendStreamingParagraph(data.paragraph)
+    })
+
     es.addEventListener("complete", (e) => {
       const data = JSON.parse((e as MessageEvent).data)
       store.setComplete(

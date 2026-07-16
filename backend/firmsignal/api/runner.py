@@ -7,7 +7,7 @@ from firmsignal.agents.accountant  import accountant_node
 from firmsignal.agents.normalizer  import normalizer_node
 from firmsignal.agents.scout       import scout_node
 from firmsignal.agents.skeptic     import skeptic_node
-from firmsignal.agents.synthesizer import synthesizer_node
+from firmsignal.agents.synthesizer import stream_synthesizer
 from firmsignal.api.store import RunRecord, RunStatus
 
 _executor = ThreadPoolExecutor(max_workers=4)
@@ -245,7 +245,7 @@ async def run_pipeline(record: RunRecord) -> None:
             await record.broadcast(None)
             return
 
-        # ── 6. Synthesizer ────────────────────────────────────────────────────────
+        # ── 6. Synthesizer (streamed paragraph by paragraph) ──────────────────────
         await _put(record, "agent_start", {
             "agent": "synthesizer",
             "log":   "Writing cited intelligence brief with Claude Sonnet...",
@@ -254,7 +254,30 @@ async def run_pipeline(record: RunRecord) -> None:
         state["hitl_approved"] = True
         state["hitl_edits"]    = decision.get("edits")
 
-        result = await run_node(synthesizer_node, "synthesizer")
+        async def _on_paragraph(paragraph: str) -> None:
+            await _put(record, "brief_paragraph", {"paragraph": paragraph})
+
+        # stream_synthesizer is natively async (llm.astream), so it runs
+        # directly on this loop rather than via run_node's thread pool —
+        # that's what lets it await _put() per paragraph as tokens arrive
+        # instead of blocking until the full ~90s call completes.
+        _synth_cm = None
+        try:
+            from langsmith import trace as _ls_trace
+            _synth_cm = _ls_trace("synthesizer", run_type="chain")
+            _synth_cm.__enter__()
+        except Exception:
+            _synth_cm = None
+
+        try:
+            result = await stream_synthesizer(dict(state), _on_paragraph)
+        finally:
+            if _synth_cm is not None:
+                try:
+                    _synth_cm.__exit__(None, None, None)
+                except Exception:
+                    pass
+
         if result.get("error"):
             await _error(record, result["error"])
             return

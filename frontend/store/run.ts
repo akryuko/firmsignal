@@ -26,12 +26,17 @@ interface RunStore {
   finalBrief:     string | null
   finalSources:   Source[]
   errorMsg:       string | null
+  // Paragraphs of the brief as Claude streams them, before `complete`
+  // arrives with the full finalBrief — lets the review page show the
+  // report being written live instead of a bare spinner.
+  streamingParagraphs: string[]
 
   startRun:       (runId: string, company: string) => void
   setAgentRunning:(agent: string, log: string) => void
   setAgentDone:   (agent: string, log: string, output?: unknown) => void
   setCorrection:  (resolved: string, note: string) => void
   setHitlPayload: (payload: HitlPayload) => void
+  appendStreamingParagraph: (paragraph: string) => void
   setComplete:    (brief: string, sources: Source[]) => void
   setError:       (msg: string) => void
   reset:          () => void
@@ -57,6 +62,7 @@ export const useRunStore = create<RunStore>((set) => ({
   finalBrief:     null,
   finalSources:   [],
   errorMsg:       null,
+  streamingParagraphs: [],
 
   startRun: (runId, company) => set({
     runId,
@@ -71,6 +77,7 @@ export const useRunStore = create<RunStore>((set) => ({
     finalSources:   [],
     correctionNote: null,
     errorMsg:       null,
+    streamingParagraphs: [],
   }),
 
   setAgentRunning: (agent, log) =>
@@ -100,8 +107,16 @@ export const useRunStore = create<RunStore>((set) => ({
   setHitlPayload: (payload) =>
     set({ hitlPayload: payload, screen: "hitl" }),
 
+  appendStreamingParagraph: (paragraph) =>
+    set((s) => ({ streamingParagraphs: [...s.streamingParagraphs, paragraph] })),
+
   setComplete: (brief, sources) =>
-    set({ finalBrief: brief, finalSources: sources, screen: "report" }),
+    set({
+      finalBrief:          brief,
+      finalSources:        sources,
+      screen:              "report",
+      streamingParagraphs: [],
+    }),
 
   setError: (msg) =>
     set({ errorMsg: msg, screen: "error" }),
@@ -120,5 +135,6 @@ export const useRunStore = create<RunStore>((set) => ({
       finalBrief:     null,
       finalSources:   [],
       errorMsg:       null,
+      streamingParagraphs: [],
     }),
 }))
