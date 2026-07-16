@@ -329,7 +329,15 @@ def synthesizer_node(state: FirmState) -> dict:
     try:
         llm = ChatAnthropic(
             model="claude-sonnet-5",
-            max_tokens=4096,
+            max_tokens=8192,
+            # Sonnet 5 runs adaptive thinking by default when `thinking` is
+            # omitted, which eats into max_tokens before the brief text is
+            # written — with a fixed budget that silently truncated later
+            # sections (Financial Overview, Risk Assessment, Signal Summary)
+            # on some runs. Disable it: this is a template-driven writing
+            # task, not exploratory reasoning, so the deterministic full
+            # token budget matters more here than thinking's quality gain.
+            thinking={"type": "disabled"},
         )
 
         context = _build_context(state, sources)
