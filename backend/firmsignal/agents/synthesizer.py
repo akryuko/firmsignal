@@ -312,8 +312,7 @@ def synthesizer_node(state: FirmState) -> dict:
 
     try:
         llm = ChatAnthropic(
-            model="claude-sonnet-4-20250514",
-            temperature=0.1,   # tiny amount of creativity — better prose than 0
+            model="claude-sonnet-5",
             max_tokens=4096,
         )
 

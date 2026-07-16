@@ -28,7 +28,7 @@ def load_golden(company_slug: str) -> dict:
 
 def _haiku():
     return ChatAnthropic(
-        model="claude-haiku-4-5-20251001",
+        model="claude-haiku-4-5",
         temperature=0,
         max_tokens=100,
     )
