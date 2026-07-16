@@ -67,23 +67,30 @@ async def stream(request: Request, run_id: str):
     if not record:
         raise HTTPException(status_code=404, detail="Run not found")
 
+    queue = record.subscribe()
+
     async def event_generator():
-        while True:
-            try:
-                item = await asyncio.wait_for(record.events.get(), timeout=60.0)
-            except asyncio.TimeoutError:
-                # Keep-alive ping — prevents proxy/browser from closing idle connections
-                yield "event: ping\ndata: {}\n\n"
-                continue
+        try:
+            while True:
+                try:
+                    item = await asyncio.wait_for(queue.get(), timeout=60.0)
+                except asyncio.TimeoutError:
+                    # Keep-alive ping — prevents proxy/browser from closing idle connections
+                    yield "event: ping\ndata: {}\n\n"
+                    continue
 
-            if item is None:
-                # Sentinel — pipeline finished
-                yield "event: done\ndata: {}\n\n"
-                break
+                if item is None:
+                    # Sentinel — pipeline finished
+                    yield "event: done\ndata: {}\n\n"
+                    break
 
-            event = item["event"]
-            data  = json.dumps(item["data"])
-            yield f"event: {event}\ndata: {data}\n\n"
+                event = item["event"]
+                data  = json.dumps(item["data"])
+                yield f"event: {event}\ndata: {data}\n\n"
+        finally:
+            # Client disconnected or the sentinel broke the loop — stop
+            # fanning events to a queue nobody is reading anymore.
+            record.unsubscribe(queue)
 
     return StreamingResponse(
         event_generator(),
