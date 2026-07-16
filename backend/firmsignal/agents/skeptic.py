@@ -290,7 +290,7 @@ def skeptic_node(state: FirmState) -> dict:
 
         # Step 3: Structured extraction — Claude Haiku with skeptical system prompt
         llm = ChatAnthropic(
-            model="claude-haiku-4-5-20251001",
+            model="claude-haiku-4-5",
             temperature=0,
             max_tokens=2048,
         ).with_structured_output(SkepticOutput)

@@ -30,7 +30,7 @@ def _format_number(n: float | None, prefix: str = "$") -> str | None:
 def _llm(max_tokens: int = 50):
     # Haiku for everything here — ticker lookup and summary are both lightweight
     return ChatAnthropic(
-        model="claude-haiku-4-5-20251001",
+        model="claude-haiku-4-5",
         temperature=0,
         max_tokens=max_tokens,
     )
